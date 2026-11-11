@@ -8,3 +8,5 @@ infraestructura/terraform/credenciales.sh
 
 # AWS SSH keys
 *.pem
+# Capturas para el PDF de evidencias (pueden mostrar tokens o IPs)
+docs/evidencias/capturas/
