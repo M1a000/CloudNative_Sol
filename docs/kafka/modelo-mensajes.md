@@ -10,7 +10,7 @@ Los DTO Java de las tareas 3.3 y 3.4 se construyen a partir de estas definicione
 | Serialización | Clave (`key`) como **String** con `StringSerializer`. Valor (`value`) como **JSON** con `JsonSerializer` |
 | Cabecera de tipo | Se desactiva `__TypeId__` (`spring.json.add.type.headers=false`). Cada consumidor indica su propio DTO destino, así los servicios no comparten paquetes Java |
 | Nombres de campo | `camelCase` y en español, igual que el evento `pedido.creado` de RabbitMQ |
-| Fechas | ISO-8601 en UTC (`Instant`), ejemplo `"2026-11-11T14:32:05Z"` |
+| Fechas | ISO-8601 en UTC (`Instant` con `@JsonFormat(shape = STRING)`), ejemplo `"2026-11-11T14:32:05Z"`. El productor puede incluir fracciones de segundo (`"...05.123456Z"`) y ambos formatos se aceptan |
 | Montos | Número en **pesos chilenos (CLP)**, sin decimales en la práctica. Se mantiene `Double` por consistencia con el código existente |
 | Versión | El campo `version` (entero) permite evolucionar el esquema. Si un consumidor recibe una versión que no conoce, envía el mensaje al DLT |
 
@@ -230,7 +230,9 @@ El consumidor actualiza en la BD de `venta-carrito` todos los ítems en carrito 
 ]
 ```
 
-Al confirmar el pedido, `venta-carrito` rechaza los ítems con `disponible = false`. El frontend los muestra con el aviso "Sin stock".
+Si el carrito tiene algún ítem con `disponible = false`, `POST /api/carrito/{usuarioId}/confirmar` responde **409 Conflict** con el nombre de los productos agotados y no publica nada (ni en RabbitMQ ni en Kafka). El frontend muestra esos ítems con el aviso "Sin stock" (tarea 4.1).
+
+Para descartar eventos que lleguen fuera de orden, el consumidor ignora un evento cuya `fechaEvento` es anterior al `actualizadoDesdeInventario` del ítem.
 
 ---
 

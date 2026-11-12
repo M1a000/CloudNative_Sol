@@ -44,7 +44,7 @@ services:
     ports:
       - "8081:8081"
     environment: &entorno-servicio
-      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_ADDRESSES: rabbitmq:5672
       DB_HOST: mysql
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:4200}
     depends_on: &espera-infra

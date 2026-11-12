@@ -22,6 +22,12 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
     }
 
+    /** Hay productos agotados en el carrito (disponibilidad sincronizada desde Kafka). */
+    @ExceptionHandler(ProductoSinStockException.class)
+    public ResponseEntity<Map<String, Object>> manejarSinStock(ProductoSinStockException ex) {
+        return responder(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     /** RabbitMQ no disponible al publicar: el carrito no se vacia (rollback) y se informa al cliente. */
     @ExceptionHandler(AmqpException.class)
     public ResponseEntity<Map<String, Object>> manejarMensajeriaNoDisponible(AmqpException ex) {

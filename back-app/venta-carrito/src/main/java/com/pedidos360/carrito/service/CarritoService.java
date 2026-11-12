@@ -1,7 +1,9 @@
 package com.pedidos360.carrito.service;
 
 import com.pedidos360.carrito.dto.PedidoCreadoEvent;
+import com.pedidos360.carrito.dto.kafka.VentaConfirmadaEvent;
 import com.pedidos360.carrito.exception.CarritoVacioException;
+import com.pedidos360.carrito.exception.ProductoSinStockException;
 import com.pedidos360.carrito.model.ItemCarrito;
 import com.pedidos360.carrito.repository.ItemCarritoRepository;
 import org.springframework.stereotype.Service;
@@ -17,10 +19,13 @@ public class CarritoService {
 
     private final ItemCarritoRepository itemCarritoRepository;
     private final PedidoEventPublisher pedidoEventPublisher;
+    private final VentaEventPublisher ventaEventPublisher;
 
-    public CarritoService(ItemCarritoRepository itemCarritoRepository, PedidoEventPublisher pedidoEventPublisher) {
+    public CarritoService(ItemCarritoRepository itemCarritoRepository, PedidoEventPublisher pedidoEventPublisher,
+                          VentaEventPublisher ventaEventPublisher) {
         this.itemCarritoRepository = itemCarritoRepository;
         this.pedidoEventPublisher = pedidoEventPublisher;
+        this.ventaEventPublisher = ventaEventPublisher;
     }
 
     public List<ItemCarrito> listarPorUsuario(String usuarioId) {
@@ -49,18 +54,28 @@ public class CarritoService {
 
     /**
      * Confirma el carrito del usuario como pedido:
-     * 1. arma el evento con los productos del carrito,
-     * 2. vacia el carrito,
-     * 3. publica el evento "pedido.creado" (el stock y el ticket se procesan de forma asincrona).
-     * Si la publicacion falla, la transaccion se revierte y el carrito no se pierde.
+     * 1. verifica que ningun producto este agotado (disponibilidad sincronizada desde Kafka),
+     * 2. arma el evento con los productos del carrito y vacia el carrito,
+     * 3. publica "pedido.creado" por RabbitMQ (stock y ticket se procesan de forma asincrona),
+     * 4. tras el commit, publica la venta en Kafka para la analitica (pedidos360.ventas.confirmadas).
+     * Si la publicacion en RabbitMQ falla, la transaccion se revierte y el carrito no se pierde.
      *
-     * @throws CarritoVacioException si el usuario no tiene productos en el carrito
+     * @throws CarritoVacioException      si el usuario no tiene productos en el carrito
+     * @throws ProductoSinStockException  si algun producto del carrito esta agotado o fue eliminado
      */
     @Transactional
     public PedidoCreadoEvent confirmarPedido(String usuarioId) {
         List<ItemCarrito> items = itemCarritoRepository.findByUsuarioId(usuarioId);
         if (items.isEmpty()) {
             throw new CarritoVacioException(usuarioId);
+        }
+
+        List<String> sinStock = items.stream()
+                .filter(item -> !item.getDisponible())
+                .map(item -> item.getNombreProducto() != null ? item.getNombreProducto() : "producto " + item.getProductoId())
+                .toList();
+        if (!sinStock.isEmpty()) {
+            throw new ProductoSinStockException(sinStock);
         }
 
         List<PedidoCreadoEvent.Item> lineas = items.stream()
@@ -77,6 +92,7 @@ public class CarritoService {
 
         itemCarritoRepository.deleteAll(items);
         pedidoEventPublisher.publicarPedidoCreado(evento);
+        ventaEventPublisher.publicarVentaConfirmada(VentaConfirmadaEvent.desde(evento));
         return evento;
     }
 }

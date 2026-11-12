@@ -10,3 +10,6 @@ infraestructura/terraform/credenciales.sh
 *.pem
 # Capturas para el PDF de evidencias (pueden mostrar tokens o IPs)
 docs/evidencias/capturas/
+
+# Logs de los microservicios en ejecucion local (pruebas y evidencias)
+logs/

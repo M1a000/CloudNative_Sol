@@ -57,7 +57,7 @@ public class StockPedidoConsumer {
 
             Map<Long, Integer> cantidades = agruparCantidadesPorProducto(pedido);
             reintentos.ejecutar("STOCK pedido " + pedido.pedidoId(),
-                    () -> productoService.descontarStock(cantidades));
+                    () -> productoService.descontarStock(cantidades, pedido.pedidoId()));
 
             canal.basicAck(deliveryTag, false);
             log.info("[STOCK] OK pedido {}: stock descontado -> ACK", pedido.pedidoId());

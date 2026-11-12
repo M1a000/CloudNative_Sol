@@ -39,6 +39,12 @@
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
 
+        <!-- Kafka: productores y consumidores de los tópicos de streaming (EP3) -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
         <!-- Seguridad: valida el JWT emitido por Azure AD en cada peticion -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -61,6 +67,12 @@
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Broker Kafka embebido para tests de integración de productores/consumidores -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka-test</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

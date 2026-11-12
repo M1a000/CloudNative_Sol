@@ -1,24 +1,38 @@
-services:
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: rabbitmq-server
-    ports:
-      - "5672:5672"   # Puerto para la comunicación de los microservicios (AMQP)
-      - "15672:15672" # Puerto para la interfaz gráfica de administración UI
-    environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: admin123
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
+# =============================================================================
+# Entorno local completo de Pedidos360:  docker compose up -d
+#
+#   Servicio                       Archivo                       Acceso
+#   Clúster RabbitMQ (3 nodos)     docker/rabbitmq-cluster.yml   http://localhost:15672  (admin / admin123)
+#   Kafka (Zookeeper + 3 brokers)  docker/kafka.yml              localhost:9092,9093,9094
+#   Kafka-UI                       docker/kafka-ui.yml           http://localhost:8090
+#   MySQL                          (este archivo)                localhost:3306          (root / root)
+#
+# Los microservicios se ejecutan en el PC (IntelliJ / mvn spring-boot:run) y se conectan
+# a estos puertos. El despliegue en la EC2 usa infraestructura/docker-compose.yml.
+# =============================================================================
+include:
+  - docker/rabbitmq-cluster.yml
+  - docker/kafka-ui.yml          # incluye a su vez docker/kafka.yml
 
+services:
   mysql:
     image: mysql:8.0
     container_name: mysql-server
+    restart: unless-stopped
     ports:
-      - "3306:3306"
+      # Si el 3306 del PC esta ocupado (ej: MySQL dentro de WSL), usar otro puerto:
+      #   MYSQL_PUERTO=3307 docker compose up -d   y ejecutar los servicios con DB_PORT=3307
+      - "${MYSQL_PUERTO:-3306}:3306"
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: catalogo_db
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
 volumes:
-  rabbitmq_data:
+  mysql_data:

@@ -9,5 +9,8 @@ public interface ItemCarritoRepository extends JpaRepository<ItemCarrito, Long> 
 
     List<ItemCarrito> findByUsuarioId(String usuarioId);
 
+    /** Items de todos los carritos que contienen un producto (para aplicar cambios de inventario). */
+    List<ItemCarrito> findByProductoId(Long productoId);
+
     void deleteByUsuarioIdAndId(String usuarioId, Long id);
 }

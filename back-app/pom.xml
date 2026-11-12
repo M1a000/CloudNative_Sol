@@ -19,5 +19,6 @@
         <module>productos-catalogo</module>
         <module>venta-carrito</module>
         <module>rabbitmq-admin</module>
+        <module>kafka-admin</module>
     </modules>
 </project>

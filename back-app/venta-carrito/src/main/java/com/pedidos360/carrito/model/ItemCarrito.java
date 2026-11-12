@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Entity
@@ -42,6 +43,15 @@ public class ItemCarrito {
 
     @Column(nullable = false)
     private LocalDateTime fechaCreacion;
+
+    // --- Sincronizados desde Kafka (topico pedidos360.inventario.actualizado) ---
+
+    // false si el producto se agoto o fue eliminado del catalogo: no se puede confirmar el pedido.
+    // null en items creados antes de la EP3 = disponible.
+    private Boolean disponible = Boolean.TRUE;
+
+    // fechaEvento del ultimo cambio de inventario aplicado; sirve para descartar eventos atrasados
+    private Instant actualizadoDesdeInventario;
 
     public ItemCarrito() {
     }
@@ -128,5 +138,29 @@ public class ItemCarrito {
 
     public void setFechaCreacion(LocalDateTime fechaCreacion) {
         this.fechaCreacion = fechaCreacion;
+    }
+
+    public Boolean getDisponible() {
+        return disponible == null || disponible;
+    }
+
+    public void setDisponible(Boolean disponible) {
+        this.disponible = disponible;
+    }
+
+    public Instant getActualizadoDesdeInventario() {
+        return actualizadoDesdeInventario;
+    }
+
+    public void setActualizadoDesdeInventario(Instant actualizadoDesdeInventario) {
+        this.actualizadoDesdeInventario = actualizadoDesdeInventario;
+    }
+
+    /** Aplica el precio y la disponibilidad vigentes del catalogo y recalcula el total. */
+    public void aplicarInventario(double precioVigente, boolean disponibleVigente, Instant fechaEvento) {
+        this.precioUnitario = precioVigente;
+        this.total = this.cantidad * precioVigente;
+        this.disponible = disponibleVigente;
+        this.actualizadoDesdeInventario = fechaEvento;
     }
 }

@@ -1,0 +1,34 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: kafka-admin
+  kafka:
+    # Brokers de docker/kafka.yml
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
+    admin:
+      client-id: kafka-admin
+      fail-fast: false                     # el servicio arranca aunque Kafka aun no este disponible
+      properties:
+        request.timeout.ms: 10000
+        default.api.timeout.ms: 15000
+
+# Datos de la App Registration en Azure AD (IDaaS)
+azure:
+  ad:
+    tenant-id: ${AZURE_TENANT_ID:a70c6bf7-a13d-4110-9625-747412057e28}
+    client-id: ${AZURE_CLIENT_ID:69ceeda7-0b2f-441c-9c63-f537ab6db86f}
+
+pedidos360:
+  cors:
+    origenes-permitidos: ${CORS_ORIGINS:http://localhost:4200,http://52.200.216.83:4200}
+  kafka-admin:
+    # Tiempo maximo de espera de cada operacion contra el cluster
+    timeout-segundos: 15
+    # Limites de seguridad para los topicos creados desde la API
+    max-particiones: 50
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

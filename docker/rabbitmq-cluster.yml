@@ -1,0 +1,76 @@
+# =============================================================================
+# Clúster RabbitMQ de 3 nodos (desarrollo local)
+#
+#   docker compose -f docker/rabbitmq-cluster.yml up -d      (solo RabbitMQ)
+#   docker compose up -d                                     (todo, desde la raíz)
+#
+# Formación del clúster: peer discovery "classic_config" (docker/rabbitmq/rabbitmq.conf).
+# Los nodos 2 y 3 esperan a que el nodo 1 esté sano y se unen a él.
+# Los 3 nodos comparten la misma Erlang cookie: es lo que les permite hablar entre sí.
+#
+#   Nodo        AMQP (microservicios)   Management UI
+#   rabbitmq1   localhost:5672          http://localhost:15672   (admin / admin123)
+#   rabbitmq2   localhost:5673          http://localhost:15673
+#   rabbitmq3   localhost:5674          http://localhost:15674
+#
+# Los microservicios reciben la lista de los 3 nodos (spring.rabbitmq.addresses):
+# si un nodo cae, el cliente se reconecta automáticamente a otro.
+# =============================================================================
+x-rabbitmq-nodo: &rabbitmq-nodo
+  image: rabbitmq:3.13-management
+  restart: unless-stopped
+  environment:
+    RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:-pedidos360-cluster-cookie}
+  volumes:
+    - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+  healthcheck:
+    test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+    interval: 10s
+    timeout: 10s
+    retries: 12
+    start_period: 20s
+
+services:
+  rabbitmq1:
+    <<: *rabbitmq-nodo
+    hostname: rabbitmq1
+    container_name: rabbitmq1
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbitmq1_data:/var/lib/rabbitmq
+
+  rabbitmq2:
+    <<: *rabbitmq-nodo
+    hostname: rabbitmq2
+    container_name: rabbitmq2
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    volumes:
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbitmq2_data:/var/lib/rabbitmq
+    depends_on:
+      rabbitmq1:
+        condition: service_healthy
+
+  rabbitmq3:
+    <<: *rabbitmq-nodo
+    hostname: rabbitmq3
+    container_name: rabbitmq3
+    ports:
+      - "5674:5672"
+      - "15674:15672"
+    volumes:
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbitmq3_data:/var/lib/rabbitmq
+    depends_on:
+      rabbitmq1:
+        condition: service_healthy
+
+volumes:
+  rabbitmq1_data:
+  rabbitmq2_data:
+  rabbitmq3_data:

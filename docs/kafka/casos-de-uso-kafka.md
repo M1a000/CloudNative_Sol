@@ -38,7 +38,18 @@ flowchart LR
     UI -.-> T2
 ```
 
-Clúster local: **3 brokers + Zookeeper**, por eso los tópicos usan factor de replicación 3.
+Clúster local: **3 brokers + Zookeeper**, por eso los tópicos usan factor de replicación 3. RabbitMQ también corre como **clúster de 3 nodos**, y los microservicios reciben la lista de los 3 (`spring.rabbitmq.addresses`).
+
+### Infraestructura (Docker Compose)
+
+| Archivo | Levanta | Acceso |
+|---|---|---|
+| [docker/rabbitmq-cluster.yml](../../docker/rabbitmq-cluster.yml) | Clúster RabbitMQ: `rabbitmq1`, `rabbitmq2`, `rabbitmq3` (peer discovery `classic_config`, cookie compartida, `pause_minority`) | AMQP 5672/5673/5674 · UI http://localhost:15672 |
+| [docker/kafka.yml](../../docker/kafka.yml) | Zookeeper + `kafka1`, `kafka2`, `kafka3` + `kafka-init`, que ejecuta [crear-topicos.sh](../../docker/kafka/crear-topicos.sh) | localhost:9092/9093/9094 |
+| [docker/kafka-ui.yml](../../docker/kafka-ui.yml) | Kafka-UI con métricas JMX de los brokers (incluye `kafka.yml`) | http://localhost:8090 |
+| [docker-compose.yml](../../docker-compose.yml) | Todo lo anterior + MySQL | `docker compose up -d` |
+
+Los tópicos se crean de dos formas que no se contradicen: el script de infraestructura `crear-topicos.sh` (idempotente) y los beans `NewTopic` de cada microservicio. Cada servicio declara el tópico que produce y el DLT del tópico que consume.
 
 ---
 
@@ -124,6 +135,9 @@ Equivalente a `rabbitmq-admin`, usa `AdminClient` y está protegido con JWT de A
 | Resetear offsets de un grupo (reprocesar) | `POST /api/kafka/grupos/{groupId}/reset-offsets` |
 | Eliminar un consumer group | `DELETE /api/kafka/grupos/{groupId}` |
 | Listar brokers del clúster | `GET /api/kafka/cluster` |
+| Restablecer una configuración a su valor por defecto | `DELETE /api/kafka/topicos/{nombre}/configuraciones/{clave}` |
+
+Reglas de protección: no permite reducir particiones (Kafka no lo admite), crear tópicos con más réplicas que brokers activos, eliminar tópicos internos (`__*`) ni resetear offsets de un grupo con consumidores activos. Swagger UI: http://localhost:8084/swagger-ui.html.
 
 ## 7. Resumen de tópicos y grupos
 
@@ -134,3 +148,50 @@ Equivalente a `rabbitmq-admin`, usa `AdminClient` y está protegido con JWT de A
 | `*.DLT` | error handlers | (inspección en Kafka-UI) | original | 1 | 3 | delete, 14 d |
 
 El formato JSON de cada mensaje se define en [modelo-mensajes.md](modelo-mensajes.md) (tarea 1.3).
+
+---
+
+## 8. Implementación: dónde está cada cosa
+
+| Pieza | productos-catalogo | venta-carrito |
+|---|---|---|
+| Configuración del cliente (bootstrap, serializers, acks=all, idempotencia, `ErrorHandlingDeserializer`, `CooperativeStickyAssignor`) | `application.yml` → `spring.kafka` | `application.yml` → `spring.kafka` |
+| Tópicos, grupos y reintentos (único lugar con nombres) | `application.yml` → `pedidos360.kafka` + `KafkaTopicosProperties` | ídem |
+| Declaración de tópicos y manejo de errores (backoff + DLT + logs) | `config/KafkaConfig` | `config/KafkaConfig` |
+| DTO | `dto/kafka/InventarioActualizadoEvent`, `VentaConfirmadaEvent` | `dto/kafka/VentaConfirmadaEvent`, `InventarioActualizadoEvent` |
+| Productor | `messaging/kafka/inventario/KafkaInventarioEventPublisher` (tras el commit) | `messaging/kafka/ventas/KafkaVentaEventPublisher` (tras el commit) |
+| Consumidor (`@KafkaListener`, solo mensajería) | `messaging/kafka/ventas/VentasConfirmadasConsumer` | `messaging/kafka/inventario/InventarioActualizadoConsumer` |
+| Lógica de negocio (sin Kafka) | `service/MetricasVentaService` (idempotencia por `eventoId`, `@Version`) | `service/SincronizacionInventarioService` (descarta eventos atrasados) |
+| Endpoint resultante | `GET /api/productos/mas-vendidos` | `GET /api/carrito/{usuarioId}` (campos `disponible`, `actualizadoDesdeInventario`); confirmar con productos agotados → **409** |
+
+Los servicios de negocio dependen de interfaces (`InventarioEventPublisher`, `VentaEventPublisher`), no de `KafkaTemplate`, igual que el productor RabbitMQ (`PedidoEventPublisher`). La integración RabbitMQ solo cambió en dos puntos: `StockPedidoConsumer` ahora pasa el `pedidoId` al descontar stock (para trazarlo en el evento Kafka), y la conexión usa los 3 nodos del clúster.
+
+## 9. Cómo levantar y probar en local
+
+```bash
+docker compose up -d                       # clúster RabbitMQ, Kafka (3 brokers), Kafka-UI y MySQL
+cd back-app && mvn clean package           # compila y ejecuta los tests de los 4 microservicios
+java -jar productos-catalogo/target/productos-catalogo-0.0.1-SNAPSHOT.jar   # :8081
+java -jar venta-carrito/target/venta-carrito-0.0.1-SNAPSHOT.jar             # :8082
+java -jar rabbitmq-admin/target/rabbitmq-admin-0.0.1-SNAPSHOT.jar           # :8083
+java -jar kafka-admin/target/kafka-admin-0.0.1-SNAPSHOT.jar                 # :8084
+
+# Prueba del administrador contra el clúster real (crea, modifica y elimina un tópico temporal)
+mvn -pl kafka-admin test -Dkafka.local=true -Dtest=KafkaAdminServiceClusterLocalTest
+```
+
+> Si el puerto 3306 del PC está ocupado (por ejemplo, por un MySQL dentro de WSL), levantar MySQL en otro puerto: `MYSQL_PUERTO=3307 docker compose up -d` y ejecutar los servicios con `DB_PORT=3307`.
+
+## 10. Verificación realizada (11/11/2026)
+
+| # | Prueba | Resultado |
+|---|---|---|
+| 1 | `pedido.creado` publicado en RabbitMQ (6 "Hamburguesa Doble" + 2 bebidas) | RabbitMQ sigue funcionando: stock descontado (ACK) y ticket generado (ACK). Kafka publicó `STOCK_DESCONTADO` de cada producto (key = productoId) y `venta-carrito` marcó `disponible = false` en los 2 carritos con el producto agotado |
+| 2 | Dos ventas en `pedidos360.ventas.confirmadas` + **la misma venta repetida** | Métricas correctas (Hamburguesa Clásica: 3 unidades en 2 pedidos). El duplicado se ignoró por idempotencia |
+| 3 | Dos ventas del mismo producto procesadas a la vez por hilos distintos del grupo | Conflicto real al crear la fila de métricas → **reintento automático** a 1 s → éxito |
+| 4 | Texto que no es JSON · venta con cantidades negativas · evento de inventario con key ≠ productoId | Los 3 van **directo al DLT** sin reintentos, con cabeceras `kafka_dlt-*`. Lag 0: la partición no se bloquea |
+| 5 | Venta válida con MySQL detenido | 3 reintentos con backoff de 1 s, 2 s y 4 s → DLT. El mensaje queda en `.DLT` para reprocesarlo |
+| 6 | Consumer groups | `catalogo-metricas-ventas` y `carrito-sync-inventario`: 3 consumidores cada uno, 1 partición por consumidor |
+| 7 | `kafka-admin` contra el clúster real | Crear (2 particiones, RF 3, configs) · duplicado → error · RF 5 > 3 brokers → rechazo · modificar/restablecer `retention.ms` · 2→4 particiones (no permite reducir) · offsets y lag de un grupo · reset a EARLIEST (lag 6) · eliminar grupo · no elimina `__consumer_offsets` · eliminar tópico |
+| 8 | Seguridad | Sin JWT, todos los endpoints de `kafka-admin` y `/api/productos/mas-vendidos` responden **401** |
+| 9 | Tests unitarios | 61 tests en verde (catálogo 19 · carrito 16 · rabbitmq-admin 15 · kafka-admin 11) |

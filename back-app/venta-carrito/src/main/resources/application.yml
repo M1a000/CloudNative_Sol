@@ -23,8 +23,8 @@ spring:
         dialect: org.hibernate.dialect.MySQLDialect
 
   rabbitmq:
-    host: ${RABBITMQ_HOST:localhost}
-    port: ${RABBITMQ_PORT:5672}
+    # Los 3 nodos del clúster (docker/rabbitmq-cluster.yml). Si uno cae, el cliente se reconecta a otro.
+    addresses: ${RABBITMQ_ADDRESSES:localhost:5672,localhost:5673,localhost:5674}
     username: ${RABBITMQ_USER:admin}
     password: ${RABBITMQ_PASSWORD:admin123}
     publisher-confirm-type: correlated    # el broker confirma (ack/nack) cada mensaje publicado
@@ -36,6 +36,53 @@ spring:
         default-requeue-rejected: false   # un mensaje rechazado nunca vuelve a la cola: va a la DLX
         # Los reintentos NO se hacen con el retry automatico de Spring sino en
         # EjecutorConReintentos, para decidir explicitamente que error se reintenta.
+
+  # ---------------------------------------------------------------------------
+  # Cliente Kafka (EP3). Brokers de docker/kafka.yml.
+  # ---------------------------------------------------------------------------
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
+    client-id: venta-carrito
+    producer:
+      # acks=all + idempotencia: el broker confirma cuando el mensaje esta en todas las
+      # replicas sincronizadas (min.insync.replicas=2) y los reintentos no generan duplicados.
+      acks: all
+      retries: 5
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      compression-type: lz4
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        linger.ms: 10                       # agrupa envios cercanos en un solo batch
+        delivery.timeout.ms: 30000
+        request.timeout.ms: 10000
+        max.block.ms: 5000                  # si Kafka no responde, no bloquear la peticion HTTP mas de 5 s
+        spring.json.add.type.headers: false # sin __TypeId__: cada consumidor define su propio DTO
+    consumer:
+      group-id: carrito-sync-inventario
+      auto-offset-reset: earliest           # un grupo nuevo procesa desde el inicio de la retencion
+      enable-auto-commit: false             # el offset lo confirma el contenedor tras procesar (ack-mode record)
+      max-poll-records: 50
+      # ErrorHandlingDeserializer: un JSON roto no rompe el listener, se envia al DLT
+      key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.use.type.headers: false
+        spring.json.trusted.packages: com.pedidos360.carrito.dto.kafka
+        isolation.level: read_committed
+        session.timeout.ms: 45000
+        heartbeat.interval.ms: 3000
+        # Rebalanceo incremental: al entrar o salir un consumidor solo se mueven las particiones necesarias
+        partition.assignment.strategy: org.apache.kafka.clients.consumer.CooperativeStickyAssignor
+    listener:
+      ack-mode: record                      # confirma el offset de cada mensaje procesado con exito
+      missing-topics-fatal: false
+    admin:
+      properties:
+        request.timeout.ms: 10000
 
 # Datos de la App Registration en Azure AD (IDaaS)
 azure:
@@ -80,3 +127,40 @@ pedidos360:
       # true: DlqAuditoriaConsumer registra en el log cada mensaje muerto y lo retira de la DLQ.
       # false: los mensajes quedan acumulados en la DLQ (util para mostrarlos en el dashboard).
       auditor-activo: ${DLQ_AUDITOR_ACTIVO:true}
+
+  # ---------------------------------------------------------------------------
+  # Topologia Kafka (EP3): UNICO lugar donde se definen nombres de topicos,
+  # grupos y parametros. El codigo los lee desde KafkaTopicosProperties.
+  # Justificacion de cada valor: docs/kafka/casos-de-uso-kafka.md
+  # ---------------------------------------------------------------------------
+  kafka:
+    topicos:
+      # Topico que ESTE servicio produce: se declara con su configuracion completa.
+      ventas-confirmadas:
+        nombre: pedidos360.ventas.confirmadas
+        particiones: 3
+        replicas: ${KAFKA_REPLICAS:3}
+        configuraciones:
+          "[cleanup.policy]": delete           # hechos historicos: se borran por antiguedad
+          "[retention.ms]": "604800000"        # 7 dias para reprocesar / auditar
+          "[min.insync.replicas]": ${KAFKA_MIN_ISR:2}
+      # Topico que ESTE servicio consume: solo se necesita el nombre (lo declara productos-catalogo).
+      inventario-actualizado:
+        nombre: pedidos360.inventario.actualizado
+    dlt:
+      sufijo: .DLT
+      particiones: 1
+      replicas: ${KAFKA_REPLICAS:3}
+      configuraciones:
+        "[cleanup.policy]": delete
+        "[retention.ms]": "1209600000"         # 14 dias para analizar los mensajes fallidos
+        "[min.insync.replicas]": ${KAFKA_MIN_ISR:2}
+    consumidores:
+      sync-inventario:
+        grupo: carrito-sync-inventario
+        concurrencia: 3                        # un hilo por particion del topico de inventario
+    reintentos:
+      max-intentos: 3                          # solo errores recuperables (BD caida)
+      intervalo-inicial-ms: 1000               # 1 s, 2 s, 4 s
+      multiplicador: 2.0
+      intervalo-maximo-ms: 8000

@@ -1,0 +1,38 @@
+# =============================================================================
+# Kafka-UI: administración visual de brokers, tópicos, mensajes y consumer groups
+#
+#   http://localhost:8090
+#
+# Incluye kafka.yml, así que este archivo por sí solo levanta Kafka + Kafka-UI:
+#   docker compose -f docker/kafka-ui.yml up -d
+# (o todo el proyecto desde la raíz: docker compose up -d)
+#
+# Las métricas de los brokers (bytes in/out, mensajes por segundo) se leen por JMX
+# en el puerto 9997 de cada broker.
+# =============================================================================
+include:
+  - kafka.yml
+
+services:
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: kafka-ui
+    restart: unless-stopped
+    ports:
+      - "8090:8080"
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
+    environment:
+      KAFKA_CLUSTERS_0_NAME: pedidos360
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:29092,kafka2:29092,kafka3:29092
+      KAFKA_CLUSTERS_0_METRICS_PORT: 9997
+      KAFKA_CLUSTERS_0_METRICS_TYPE: JMX
+      # Permite crear/editar tópicos y resetear offsets desde la interfaz
+      KAFKA_CLUSTERS_0_READONLY: "false"
+      DYNAMIC_CONFIG_ENABLED: "true"
+      JAVA_OPTS: "-Xms128m -Xmx384m"

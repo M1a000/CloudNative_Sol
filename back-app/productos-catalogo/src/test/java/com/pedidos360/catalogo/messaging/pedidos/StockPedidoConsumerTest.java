@@ -22,6 +22,8 @@ import java.util.Map;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -74,7 +76,7 @@ class StockPedidoConsumerTest {
     void pedidoValidoDescuentaElStockAgrupadoYHaceAck() throws Exception {
         consumer.alRecibirPedidoCreado(mensaje(PEDIDO_VALIDO), canal);
 
-        verify(productoService).descontarStock(Map.of(1L, 3, 3L, 1));
+        verify(productoService).descontarStock(eq(Map.of(1L, 3, 3L, 1)), anyString());
         verify(canal).basicAck(DELIVERY_TAG, false);
         verify(canal, never()).basicNack(anyLong(), anyBoolean(), anyBoolean());
     }
@@ -100,22 +102,22 @@ class StockPedidoConsumerTest {
 
     @Test
     void stockInsuficienteNoSeReintentaYVaALaDlq() throws Exception {
-        doThrow(new StockInsuficienteException(1L, 0, 3)).when(productoService).descontarStock(anyMap());
+        doThrow(new StockInsuficienteException(1L, 0, 3)).when(productoService).descontarStock(anyMap(), anyString());
 
         consumer.alRecibirPedidoCreado(mensaje(PEDIDO_VALIDO), canal);
 
-        verify(productoService, times(1)).descontarStock(anyMap());
+        verify(productoService, times(1)).descontarStock(anyMap(), anyString());
         verify(canal).basicNack(DELIVERY_TAG, false, false);
     }
 
     @Test
     void errorRecuperableSeReintentaTresVecesYLuegoVaALaDlq() throws Exception {
         doThrow(new DataAccessResourceFailureException("BD no disponible"))
-                .when(productoService).descontarStock(anyMap());
+                .when(productoService).descontarStock(anyMap(), anyString());
 
         consumer.alRecibirPedidoCreado(mensaje(PEDIDO_VALIDO), canal);
 
-        verify(productoService, times(3)).descontarStock(anyMap());
+        verify(productoService, times(3)).descontarStock(anyMap(), anyString());
         verify(canal).basicNack(DELIVERY_TAG, false, false);
         verify(canal, never()).basicAck(anyLong(), anyBoolean());
     }
@@ -124,11 +126,11 @@ class StockPedidoConsumerTest {
     void errorRecuperableQueSeResuelveEnElSegundoIntentoTerminaEnAck() throws Exception {
         doThrow(new DataAccessResourceFailureException("BD no disponible"))
                 .doNothing()
-                .when(productoService).descontarStock(anyMap());
+                .when(productoService).descontarStock(anyMap(), anyString());
 
         consumer.alRecibirPedidoCreado(mensaje(PEDIDO_VALIDO), canal);
 
-        verify(productoService, times(2)).descontarStock(anyMap());
+        verify(productoService, times(2)).descontarStock(anyMap(), anyString());
         verify(canal).basicAck(DELIVERY_TAG, false);
     }
 }

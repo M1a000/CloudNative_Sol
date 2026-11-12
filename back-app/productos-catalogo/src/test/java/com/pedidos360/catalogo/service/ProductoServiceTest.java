@@ -1,5 +1,6 @@
 package com.pedidos360.catalogo.service;
 
+import com.pedidos360.catalogo.dto.kafka.TipoEventoInventario;
 import com.pedidos360.catalogo.exception.ProductoNoEncontradoException;
 import com.pedidos360.catalogo.exception.StockInsuficienteException;
 import com.pedidos360.catalogo.model.Producto;
@@ -16,6 +17,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -25,6 +27,9 @@ class ProductoServiceTest {
 
     @Mock
     private ProductoRepository productoRepository;
+
+    @Mock
+    private InventarioEventPublisher inventarioEventPublisher;
 
     @InjectMocks
     private ProductoService productoService;
@@ -39,6 +44,9 @@ class ProductoServiceTest {
 
         assertThat(hamburguesa.getStock()).isEqualTo(7);
         verify(productoRepository).save(hamburguesa);
+        verify(inventarioEventPublisher).publicar(argThat(evento ->
+                evento.tipoEvento() == TipoEventoInventario.STOCK_DESCONTADO
+                        && evento.stockAnterior() == 10 && evento.stockActual() == 7));
     }
 
     @Test
