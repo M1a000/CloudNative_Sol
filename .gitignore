@@ -13,3 +13,7 @@ docs/evidencias/capturas/
 
 # Logs de los microservicios en ejecucion local (pruebas y evidencias)
 logs/
+
+# PDF de evidencias (contiene las capturas: se entrega en AVA, no va al repositorio)
+docs/evidencias/*.pdf
+docs/evidencias/*.docx
