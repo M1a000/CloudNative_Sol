@@ -1,7 +1,7 @@
 {
   "info": {
     "_postman_id": "da484798-4195-468d-9330-d44bf556c0f6",
-    "name": "Pedidos360 - Backend (RabbitMQ)",
+    "name": "Pedidos360 - Backend (RabbitMQ + Kafka)",
     "description": "Pega el JWT de Azure AD en la variable de coleccion 'token'. Ejecuta las carpetas en orden.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -29,12 +29,20 @@
       "value": "http://localhost:8083"
     },
     {
+      "key": "kafkaAdminUrl",
+      "value": "http://localhost:8084"
+    },
+    {
       "key": "usuarioId",
       "value": "user-123"
     },
     {
       "key": "token",
       "value": ""
+    },
+    {
+      "key": "topicoPrueba",
+      "value": "pedidos360.notificaciones"
     }
   ],
   "item": [
@@ -998,6 +1006,729 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Responde 404\", function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Kafka: datos de negocio (consumidores)",
+      "item": [
+        {
+          "name": "Mas vendidos (top 5) - consumidor de ventas.confirmadas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{catalogoUrl}}/api/productos/mas-vendidos?top=5",
+              "host": [
+                "{{catalogoUrl}}"
+              ],
+              "path": [
+                "api",
+                "productos",
+                "mas-vendidos"
+              ],
+              "query": [
+                {
+                  "key": "top",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Es un ranking (arreglo)\", function () { pm.expect(pm.response.json()).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Carrito con disponibilidad sincronizada desde inventario.actualizado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{carritoUrl}}/api/carrito/{{usuarioId}}",
+              "host": [
+                "{{carritoUrl}}"
+              ],
+              "path": [
+                "api",
+                "carrito",
+                "{{usuarioId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Cada item trae el campo disponible\", function () { pm.response.json().forEach(i => pm.expect(i).to.have.property(\"disponible\")); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Administrador Kafka (kafka-admin)",
+      "item": [
+        {
+          "name": "Cluster: brokers y controlador",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kafkaAdminUrl}}/api/kafka/cluster",
+              "host": [
+                "{{kafkaAdminUrl}}"
+              ],
+              "path": [
+                "api",
+                "kafka",
+                "cluster"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Hay 3 brokers\", function () { pm.expect(pm.response.json().brokers.length).to.eql(3); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar topicos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kafkaAdminUrl}}/api/kafka/topicos",
+              "host": [
+                "{{kafkaAdminUrl}}"
+              ],
+              "path": [
+                "api",
+                "kafka",
+                "topicos"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear topico de prueba (3 particiones, RF 3, configs)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{kafkaAdminUrl}}/api/kafka/topicos",
+              "host": [
+                "{{kafkaAdminUrl}}"
+              ],
+              "path": [
+                "api",
+                "kafka",
+                "topicos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"{{topicoPrueba}}\",\n  \"particiones\": 3,\n  \"factorReplicacion\": 3,\n  \"configuraciones\": {\n    \"cleanup.policy\": \"delete\",\n    \"retention.ms\": \"86400000\",\n    \"min.insync.replicas\": \"2\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 201\", function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detalle del topico (lideres, replicas, ISR)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kafkaAdminUrl}}/api/kafka/topicos/{{topicoPrueba}}",
+              "host": [
+                "{{kafkaAdminUrl}}"
+              ],
+              "path": [
+                "api",
+                "kafka",
+                "topicos",
+                "{{topicoPrueba}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ver configuraciones del topico",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kafkaAdminUrl}}/api/kafka/topicos/{{topicoPrueba}}/configuraciones",
+              "host": [
+                "{{kafkaAdminUrl}}"
+              ],
+              "path": [
+                "api",
+                "kafka",
+                "topicos",
+                "{{topicoPrueba}}",
+                "configuraciones"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Modificar retention.ms a 2 dias",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{kafkaAdminUrl}}/api/kafka/topicos/{{topicoPrueba}}/configuraciones",
+              "host": [
+                "{{kafkaAdminUrl}}"
+              ],
+              "path": [
+                "api",
+                "kafka",
+                "topicos",
+                "{{topicoPrueba}}",
+                "configuraciones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"configuraciones\": {\n    \"retention.ms\": \"172800000\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restablecer retention.ms al valor por defecto",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{kafkaAdminUrl}}/api/kafka/topicos/{{topicoPrueba}}/configuraciones/retention.ms",
+              "host": [
+                "{{kafkaAdminUrl}}"
+              ],
+              "path": [
+                "api",
+                "kafka",
+                "topicos",
+                "{{topicoPrueba}}",
+                "configuraciones",
+                "retention.ms"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Aumentar particiones a 4",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{kafkaAdminUrl}}/api/kafka/topicos/{{topicoPrueba}}/particiones",
+              "host": [
+                "{{kafkaAdminUrl}}"
+              ],
+              "path": [
+                "api",
+                "kafka",
+                "topicos",
+                "{{topicoPrueba}}",
+                "particiones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"particiones\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar consumer groups",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kafkaAdminUrl}}/api/kafka/grupos",
+              "host": [
+                "{{kafkaAdminUrl}}"
+              ],
+              "path": [
+                "api",
+                "kafka",
+                "grupos"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detalle del grupo catalogo-metricas-ventas (offsets y lag)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kafkaAdminUrl}}/api/kafka/grupos/catalogo-metricas-ventas",
+              "host": [
+                "{{kafkaAdminUrl}}"
+              ],
+              "path": [
+                "api",
+                "kafka",
+                "grupos",
+                "catalogo-metricas-ventas"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar topico de prueba",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{kafkaAdminUrl}}/api/kafka/topicos/{{topicoPrueba}}",
+              "host": [
+                "{{kafkaAdminUrl}}"
+              ],
+              "path": [
+                "api",
+                "kafka",
+                "topicos",
+                "{{topicoPrueba}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 204\", function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Validaciones del administrador Kafka (deben fallar)",
+      "item": [
+        {
+          "name": "Sin token -> 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kafkaAdminUrl}}/api/kafka/topicos",
+              "host": [
+                "{{kafkaAdminUrl}}"
+              ],
+              "path": [
+                "api",
+                "kafka",
+                "topicos"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 401\", function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reducir particiones -> 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{kafkaAdminUrl}}/api/kafka/topicos/pedidos360.ventas.confirmadas/particiones",
+              "host": [
+                "{{kafkaAdminUrl}}"
+              ],
+              "path": [
+                "api",
+                "kafka",
+                "topicos",
+                "pedidos360.ventas.confirmadas",
+                "particiones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"particiones\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400\", function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Factor de replicacion mayor que los brokers -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{kafkaAdminUrl}}/api/kafka/topicos",
+              "host": [
+                "{{kafkaAdminUrl}}"
+              ],
+              "path": [
+                "api",
+                "kafka",
+                "topicos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"pedidos360.prueba.rf\",\n  \"particiones\": 1,\n  \"factorReplicacion\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400\", function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Topico sin nombre -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{kafkaAdminUrl}}/api/kafka/topicos",
+              "host": [
+                "{{kafkaAdminUrl}}"
+              ],
+              "path": [
+                "api",
+                "kafka",
+                "topicos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"\",\n  \"particiones\": 1,\n  \"factorReplicacion\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400\", function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar topico interno -> 400",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{kafkaAdminUrl}}/api/kafka/topicos/__consumer_offsets",
+              "host": [
+                "{{kafkaAdminUrl}}"
+              ],
+              "path": [
+                "api",
+                "kafka",
+                "topicos",
+                "__consumer_offsets"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400\", function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Topico inexistente -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kafkaAdminUrl}}/api/kafka/topicos/pedidos360.no.existe",
+              "host": [
+                "{{kafkaAdminUrl}}"
+              ],
+              "path": [
+                "api",
+                "kafka",
+                "topicos",
+                "pedidos360.no.existe"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 404\", function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reset de offsets con grupo activo -> 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{kafkaAdminUrl}}/api/kafka/grupos/catalogo-metricas-ventas/reset-offsets",
+              "host": [
+                "{{kafkaAdminUrl}}"
+              ],
+              "path": [
+                "api",
+                "kafka",
+                "grupos",
+                "catalogo-metricas-ventas",
+                "reset-offsets"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topico\": \"pedidos360.ventas.confirmadas\",\n  \"estrategia\": \"EARLIEST\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 409\", function () { pm.response.to.have.status(409); });"
                 ]
               }
             }

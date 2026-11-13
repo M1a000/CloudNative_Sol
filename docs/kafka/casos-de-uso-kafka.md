@@ -194,7 +194,7 @@ mvn -pl kafka-admin test -Dkafka.local=true -Dtest=KafkaAdminServiceClusterLocal
 | 6 | Consumer groups | `catalogo-metricas-ventas` y `carrito-sync-inventario`: 3 consumidores cada uno, 1 partición por consumidor |
 | 7 | `kafka-admin` contra el clúster real | Crear (2 particiones, RF 3, configs) · duplicado → error · RF 5 > 3 brokers → rechazo · modificar/restablecer `retention.ms` · 2→4 particiones (no permite reducir) · offsets y lag de un grupo · reset a EARLIEST (lag 6) · eliminar grupo · no elimina `__consumer_offsets` · eliminar tópico |
 | 8 | Seguridad | Sin JWT, todos los endpoints de `kafka-admin` y `/api/productos/mas-vendidos` responden **401** |
-| 9 | Tests unitarios | 61 tests en verde (catálogo 19 · carrito 16 · rabbitmq-admin 15 · kafka-admin 11) |
+| 9 | Tests unitarios | 61 tests en verde (catálogo 19 · carrito 16 · rabbitmq-admin 15 · kafka-admin 11). El 13/11 se agregaron 32 tests de productores, consumidores, servicios de negocio y manejo de errores Kafka: **93 en verde** (catálogo 35 · carrito 32 · rabbitmq-admin 15 · kafka-admin 11) |
 
 ## 11. Frontend: datos de Kafka visibles para el usuario (12/11/2026)
 
@@ -204,3 +204,21 @@ mvn -pl kafka-admin test -Dkafka.local=true -Dtest=KafkaAdminServiceClusterLocal
 | **Carrito: aviso "Sin stock"** | Etiqueta "Sin stock" en cada item agotado, aviso general, botón *Continuar compra* deshabilitado y total sin los agotados. Si el backend igual responde **409**, se informa y se recarga el carrito. El precio mostrado es el vigente del backend (también lo actualiza Kafka) | `pedidos360.inventario.actualizado` → `venta-carrito` (campo `disponible` de cada item) | `pages/carrito/`, `services/carrito.ts`, `components/models/carrito.ts` |
 
 Pruebas unitarias del frontend (Vitest, `npx ng test --watch=false`): **12 archivos, 22 tests en verde**. Las nuevas cubren la llamada a `mas-vendidos` con `top`, el ranking, los estados vacío y error, el mapeo de `disponible` y del precio vigente, el bloqueo de la compra con productos agotados y la respuesta 409.
+
+## 12. Despliegue en AWS EC2 (13/11/2026)
+
+`terraform apply` crea VPC, subred pública, security group (solo la IP de quien despliega) y una EC2 **t3.large** (8 GB, swap 2 GB). Al arrancar, la instancia clona el repositorio, compila los 4 microservicios con Maven en un contenedor y ejecuta `infraestructura/docker-compose.yml`, que **reutiliza los mismos archivos de `docker/`** del entorno local:
+
+| Componente | Contenedores | Acceso |
+|---|---|---|
+| Clúster RabbitMQ | `rabbitmq1..3` | `:15672` |
+| Kafka | `zookeeper`, `kafka1..3`, `kafka-init` (crea los tópicos y termina con código 0) | red interna `kafkaN:29092` |
+| Kafka-UI | `kafka-ui` | `:8090` |
+| Base de datos | `mysql-server` | red interna |
+| Microservicios | `productos-catalogo`, `venta-carrito`, `rabbitmq-admin`, `kafka-admin` | `:8081` a `:8084` |
+
+Los microservicios usan `RABBITMQ_ADDRESSES=rabbitmq1:5672,rabbitmq2:5672,rabbitmq3:5672` y `KAFKA_BOOTSTRAP_SERVERS=kafka1:29092,kafka2:29092,kafka3:29092`; el heap de cada JVM está acotado y se fuerza IPv4 (`-Djava.net.preferIPv4Stack=true`), porque sin IPv6 en la red de Docker la JVM no lograba leer la configuración OIDC de Azure AD y el microservicio no arrancaba.
+
+Verificación: 14 contenedores (13 *Up*/*healthy* + `kafka-init` *Exited (0)*), consumer groups con una partición por consumidor, `ping` 200, endpoints protegidos 401 sin JWT, Kafka-UI y RabbitMQ 200, preflight CORS desde `http://localhost:4200` 200. Uso de memoria ≈ 3,5 GB. El frontend se ejecuta en `http://localhost:4200` (redirect URI registrado en Azure AD).
+
+**API Manager.** `infraestructura/terraform/api_gateway.tf` crea un AWS API Gateway (HTTP API, integraciones `HTTP_PROXY`) que enruta `/api/productos/**` → 8081, `/api/carrito/**` → 8082, `/api/rabbitmq/**` → 8083 y `/api/kafka/**` → 8084; el frontend llama a esa única URL. El security group abre 8081-8084 solo a los rangos de IP que AWS publica para API Gateway en `us-east-1` (`data.aws_ip_ranges`). Verificado: `ping` 200 a través del gateway, endpoints protegidos de las 4 rutas 401 sin JWT y preflight CORS desde `http://localhost:4200` 200 con `Authorization` permitido. Este gateway reemplaza la URL heredada de la EP2, que pertenecía a otra cuenta de AWS.

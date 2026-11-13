@@ -7,7 +7,7 @@ Guía paso a paso con los comandos exactos. Hay dos formas de levantar el proyec
 | [A. En AWS (EC2)](#a-despliegue-en-aws-ec2) | Presentación y prueba completa | 15 a 20 min |
 | [B. En el computador](#b-todo-en-el-computador-plan-b) | Desarrollo, o si AWS falla | 5 min |
 
-El detalle del backend (topología de RabbitMQ, ACK/NACK, API del administrador) está en [back-app/README.md](back-app/README.md).
+El detalle del backend (topología de RabbitMQ, ACK/NACK, tópicos y consumer groups de Kafka, API de los dos administradores) está en [back-app/README.md](back-app/README.md). El diseño de Kafka (EP3), con la justificación de cada decisión y las pruebas realizadas, está en [docs/kafka/casos-de-uso-kafka.md](docs/kafka/casos-de-uso-kafka.md).
 
 | Carpeta | Contenido |
 |---|---|
@@ -61,9 +61,12 @@ Escribir `yes` cuando lo pida. Al terminar imprime:
 instance_public_ip = "X.X.X.X"
 rabbitmq_dashboard = "http://X.X.X.X:15672"
 ssh                = "ssh -i pedidos360.pem ubuntu@X.X.X.X"
+api_gateway_url    = "https://XXXXXXXXXX.execute-api.us-east-1.amazonaws.com"
 ```
 
-Anotar la IP: se usa en todos los pasos siguientes (aparece como `IP`). Para verla de nuevo: `terraform output`.
+Anotar la IP (aparece como `IP` en los pasos siguientes) y la URL del API Gateway. Para verlas de nuevo: `terraform output`.
+
+> **API Manager.** Terraform crea también un **AWS API Gateway (HTTP API)** que enruta `/api/productos/**` → 8081, `/api/carrito/**` → 8082, `/api/rabbitmq/**` → 8083 y `/api/kafka/**` → 8084 (archivo `infraestructura/terraform/api_gateway.tf`). El frontend llama a esa única URL. El security group abre los puertos 8081-8084 **solo a los rangos de IP que AWS publica para API Gateway** en la región; Kafka-UI, RabbitMQ, MySQL y SSH siguen restringidos a la IP propia.
 
 > Terraform usa el key pair `pedidos360`. Si en la cuenta solo existe `vockey`:
 > `terraform apply -var "key_name=vockey"`
@@ -85,11 +88,12 @@ En el dashboard, pestaña **Queues and Streams**, deben aparecer `pedidos.stock.
 
 ### 4. Frontend
 
-1. Editar `front-app/src/environments/environment.development.ts` y poner la IP:
+1. Editar `front-app/src/environments/environment.development.ts` y poner la URL del API Gateway (`terraform output api_gateway_url`) en ambas variables:
    ```ts
-   catalogoUrl: 'http://IP:8081',
-   carritoUrl: 'http://IP:8082',
+   catalogoUrl: 'https://XXXXXXXXXX.execute-api.us-east-1.amazonaws.com',
+   carritoUrl: 'https://XXXXXXXXXX.execute-api.us-east-1.amazonaws.com',
    ```
+   También funciona apuntando directo a la EC2 (`http://IP:8081` y `http://IP:8082`), sin pasar por el API Manager.
 2. En una terminal:
    ```bash
    cd front-app
@@ -98,7 +102,7 @@ En el dashboard, pestaña **Queues and Streams**, deben aparecer `pedidos.stock.
    ```
 3. Abrir `http://localhost:4200`.
 
-No subir a GitHub el cambio de IP: es distinta en cada despliegue. Para deshacerlo: `git checkout front-app/src/environments/environment.development.ts`
+No subir a GitHub este cambio: la URL y la IP son distintas en cada despliegue. Para deshacerlo: `git checkout front-app/src/environments/environment.development.ts`
 
 ### 5. Ver los logs de los microservicios
 
@@ -203,13 +207,13 @@ El token dura cerca de una hora. Si las peticiones empiezan a responder 401, cop
 
 1. En Postman, pulsar **Import** (arriba a la izquierda).
 2. Arrastrar el archivo `back-app/postman/Pedidos360-backend.postman_collection.json`.
-3. En el panel izquierdo aparece **Pedidos360 - Backend (RabbitMQ)** con cuatro carpetas.
+3. En el panel izquierdo aparece **Pedidos360 - Backend (RabbitMQ + Kafka)** con siete carpetas: 1 a 4 para el catálogo, el carrito y RabbitMQ, y 5 a 7 para Kafka.
 
 #### c) Poner la IP y el token en las variables
 
 La IP **no** se escribe en la barra de direcciones de cada petición. Las peticiones usan comodines como `{{adminUrl}}`, y Postman los reemplaza por lo que se defina aquí:
 
-1. En el panel izquierdo, hacer clic en el nombre **Pedidos360 - Backend (RabbitMQ)** (el título de la colección, no una carpeta ni una petición).
+1. En el panel izquierdo, hacer clic en el nombre **Pedidos360 - Backend (RabbitMQ + Kafka)** (el título de la colección, no una carpeta ni una petición).
 2. En la pestaña que se abre, hacer clic en **Variables**.
 3. Hacer doble clic en el valor de cada fila y reemplazarlo (si hay dos columnas, usar **Current value**):
 
@@ -218,8 +222,10 @@ La IP **no** se escribe en la barra de direcciones de cada petición. Las petici
    | `catalogoUrl` | `http://IP:8081` |
    | `carritoUrl` | `http://IP:8082` |
    | `adminUrl` | `http://IP:8083` |
+   | `kafkaAdminUrl` | `http://IP:8084` |
    | `token` | el JWT copiado |
    | `usuarioId` | no se cambia |
+   | `topicoPrueba` | no se cambia (tópico temporal que crea y elimina la carpeta 6) |
 
    Sin espacios y sin `/` al final.
 4. Pulsar **Save** (`Ctrl + S`). Sin guardar, se siguen usando los valores anteriores.
@@ -284,6 +290,47 @@ El 204 significa "eliminado" y la respuesta sale vacía. Al recargar el dashboar
 | API REST del administrador | `rabbitmq-admin/.../controller/RabbitAdminController.java` |
 | Lógica encapsulada en un servicio | `rabbitmq-admin/.../service/RabbitAdminService.java` |
 | Validación de entrada | `rabbitmq-admin/.../dto/CrearColaRequest.java` |
+| **Kafka:** cliente (bootstrap, serializers, acks, grupos) | `application.yml` de catálogo y carrito → bloque `spring.kafka` |
+| **Kafka:** tópicos (particiones, réplicas, retención, cleanup) | `application.yml` → bloque `pedidos360.kafka` · `docker/kafka/crear-topicos.sh` |
+| **Kafka:** productores con DTO | `messaging/kafka/ventas/KafkaVentaEventPublisher.java` (carrito) · `messaging/kafka/inventario/KafkaInventarioEventPublisher.java` (catálogo) |
+| **Kafka:** consumidores `@KafkaListener` | `messaging/kafka/ventas/VentasConfirmadasConsumer.java` (catálogo) · `messaging/kafka/inventario/InventarioActualizadoConsumer.java` (carrito) |
+| **Kafka:** reintentos con backoff y DLT | `config/KafkaConfig.java` de catálogo y de carrito |
+| **Kafka:** API del administrador | `kafka-admin/.../controller/KafkaAdminController.java` y `service/KafkaAdminService.java` |
+
+### 5. Kafka (EP3)
+
+**a) Analítica de ventas (tópico `pedidos360.ventas.confirmadas`)**
+
+1. Con la sesión iniciada, confirmar un pedido desde el carrito.
+2. Abrir **🏆 Más vendidos**: el ranking se actualiza con esa venta.
+3. En los logs: `venta-carrito` muestra `[KAFKA-PRODUCTOR] Venta del pedido ... publicada en pedidos360.ventas.confirmadas-N@offset` y `productos-catalogo` muestra `[KAFKA-CONSUMIDOR]` con las métricas actualizadas.
+
+**b) Sincronización de inventario (tópico `pedidos360.inventario.actualizado`)**
+
+1. Agregar al carrito un producto con poco stock (la Hamburguesa Doble parte con 6) y **no confirmar**.
+2. Agotar ese stock con otro pedido. Por ejemplo, publicar en el dashboard de RabbitMQ (**Exchanges → `pedidos.exchange` → Publish message**, routing key `pedido.creado`, propiedad `content_type = application/json`):
+   ```json
+   {"pedidoId":"DEMO-STOCK","usuarioId":"otro-cliente","total":53940,
+    "items":[{"productoId":3,"nombreProducto":"Hamburguesa Doble","cantidad":6,"precioUnitario":8990}]}
+   ```
+3. Recargar el carrito: el producto aparece con la etiqueta **Sin stock** y el botón de compra queda deshabilitado. Es la cadena completa: RabbitMQ descuenta el stock → `productos-catalogo` publica `STOCK_DESCONTADO` en Kafka → `venta-carrito` lo consume y marca el item.
+
+**c) Monitoreo con Kafka-UI** (`http://IP:8090`)
+
+| Pestaña | Qué mostrar |
+|---|---|
+| **Brokers** | 3 brokers, controlador activo y 0 réplicas fuera de sincronía |
+| **Topics** | Los 2 tópicos con 3 particiones y RF 3, sus `.DLT` y la cantidad de mensajes. En **Settings**: `cleanup.policy` (`delete` en ventas y `compact` en inventario) y `retention.ms` |
+| **Topics → Messages** | El JSON de cada evento con su key (`usuarioId` en ventas, `productoId` en inventario) |
+| **Consumers** | `catalogo-metricas-ventas` y `carrito-sync-inventario`: 3 miembros, una partición cada uno, lag 0 |
+
+**d) Administrador de Kafka**
+
+Con la colección de Postman: carpeta **6. Administrador Kafka**, en orden. Crea el tópico `pedidos360.notificaciones` (verlo aparecer en Kafka-UI), cambia su retención, aumenta sus particiones, consulta los consumer groups y lo elimina. La carpeta **7** muestra las validaciones: no se pueden reducir particiones, pedir un factor de replicación mayor que la cantidad de brokers ni eliminar tópicos internos.
+
+**e) Manejo de errores**
+
+Publicar un mensaje inválido directamente en el tópico desde Kafka-UI (**Topics → `pedidos360.ventas.confirmadas` → Produce Message**, valor `hola`): el log muestra `[KAFKA-DLT]`, el mensaje aparece en `pedidos360.ventas.confirmadas.DLT` con sus cabeceras `kafka_dlt-*` y el consumidor sigue procesando los mensajes siguientes.
 
 ---
 
@@ -291,16 +338,21 @@ El 204 significa "eliminado" y la respuesta sale vacía. Al recargar el dashboar
 
 Requisitos: Docker Desktop abierto, Java 17 o superior, Maven y Node.
 
-### 1. RabbitMQ y MySQL
+### 1. RabbitMQ, Kafka y MySQL
 
 Desde la raíz del repositorio:
 
 ```bash
 docker compose up -d
-docker compose ps        # los dos contenedores deben estar "Up"
+docker compose ps -a     # 3 nodos RabbitMQ, Zookeeper, 3 brokers Kafka, Kafka-UI y MySQL en "Up";
+                         # kafka-init en "Exited (0)" porque solo crea los tópicos
 ```
 
-### 2. Los tres microservicios
+Dashboard de RabbitMQ: `http://localhost:15672` (admin / admin123) · Kafka-UI: `http://localhost:8090`.
+
+> Si el puerto 3306 del PC está ocupado (por ejemplo, por un MySQL dentro de WSL): `MYSQL_PUERTO=3307 docker compose up -d` y ejecutar los microservicios con `DB_PORT=3307`.
+
+### 2. Los cuatro microservicios
 
 Una terminal por cada uno. La terminal queda ocupada mostrando los logs; está listo cuando aparece `Started ...Application`.
 
@@ -316,6 +368,11 @@ mvn spring-boot:run
 
 ```bash
 cd back-app/rabbitmq-admin
+mvn spring-boot:run
+```
+
+```bash
+cd back-app/kafka-admin
 mvn spring-boot:run
 ```
 
@@ -371,4 +428,6 @@ cd /opt/pedidos360 && sudo git pull && sudo bash infraestructura/desplegar.sh
 | El login vuelve con error de `redirect_uri` | Abrir el frontend exactamente en `http://localhost:4200`, que es la URL registrada en Azure AD |
 | El backend responde 401 | No hay sesión iniciada o el JWT de Postman venció (dura cerca de 1 hora): copiar uno nuevo |
 | En local aparece `PRECONDITION_FAILED - inequivalent arg` | Quedó una cola antigua con otra configuración: eliminarla en el dashboard y reiniciar el microservicio |
-| En local un puerto está ocupado | Hay otro proceso usando 8081, 8082, 8083 o 4200: cerrar la terminal anterior |
+| En local un puerto está ocupado | Hay otro proceso usando 8081, 8082, 8083, 8084 o 4200: cerrar la terminal anterior |
+| Un microservicio en Docker no arranca y el log dice `Unable to resolve the Configuration with the provided Issuer` | La JVM no llega a Azure AD. En `infraestructura/docker-compose.yml` ya va `-Djava.net.preferIPv4Stack=true`; revisar además la conexión a internet de la EC2 o del PC |
+| Docker Desktop dice *Virtualization is disabled in firmware* | Activar **SVM Mode** (AMD) o **Intel VT-x** en la BIOS y reiniciar |

@@ -27,6 +27,17 @@ resource "aws_security_group" "sg_microservicios" {
     cidr_blocks = [local.allowed_cidr]
   }
 
+  # API Gateway llega a la EC2 desde sus propias IP de AWS, no desde la IP de quien despliega.
+  # Los puertos de los microservicios se abren SOLO a los rangos publicados por AWS para
+  # API Gateway en la region (data.aws_ip_ranges.api_gateway, en api_gateway.tf).
+  ingress {
+    description = "Microservicios 8081-8084 desde API Gateway"
+    from_port   = 8081
+    to_port     = 8084
+    protocol    = "tcp"
+    cidr_blocks = data.aws_ip_ranges.api_gateway.cidr_blocks
+  }
+
   ingress {
     from_port   = 3306
     to_port     = 3306

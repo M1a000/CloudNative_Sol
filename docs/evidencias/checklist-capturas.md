@@ -64,23 +64,31 @@ Guardar cada captura en `docs/evidencias/capturas/` con **el nombre exacto** de 
 ## 6. Pruebas unitarias
 | ✔ | Archivo | Qué debe verse |
 |---|---|---|
-| ✅ | `25_tests_backend.png` | `mvn -f back-app/pom.xml test`: clases de test de los 4 microservicios, resumen por módulo y BUILD SUCCESS (reemplaza a las antiguas 25, 26 y 27) |
-| ⬜ | `28_tests_frontend.png` | `ng test` / `npm test` en verde |
+| ✅ | `25_tests_backend.png` | `mvn -f back-app/pom.xml test`: Reactor Summary con los 4 microservicios en SUCCESS y BUILD SUCCESS (93 tests en verde, 8 omitidos que requieren el clúster) |
+| ✅ | `25b_tests_backend_resumen.png` | `mvn -f back-app/pom.xml test | grep -E "Tests run:|Building |BUILD"`: cada clase de test (incluidas las de Kafka) y el total por módulo: 35 · 32 · 15 · 19 |
+| ✅ | `28_tests_frontend.png` | `npx ng test --watch=false`: 12 archivos, 22 tests en verde |
 
 ## 7. Despliegue AWS y pruebas de integración
 | ✔ | Archivo | Qué debe verse |
 |---|---|---|
-| ⬜ | `29_aws_ec2.png` | Consola AWS: instancia EC2 *running* |
-| ⬜ | `30_aws_docker_ps.png` | `docker ps` dentro de la EC2 |
-| ⬜ | `31_login_idaas.png` | Pantalla de login de Azure AD desde el frontend desplegado |
-| ⬜ | `32_front_logueado.png` | Frontend con la sesión iniciada |
+| ✅ | `29_aws_ec2.png` | Consola AWS: instancia EC2 *running*, t3.large, IP pública |
+| ✅ | `30_aws_docker_ps.png` | `docker ps` dentro de la EC2: 14 contenedores (`kafka-init` *Exited (0)*) |
+| ✅ | `31_login_idaas.png` | Pantalla de login de Azure AD desde el frontend desplegado. (tenant-id y client-id tapados) |
+| ✅ | `32_front_logueado.png` | Frontend con la sesión iniciada |
 | ✅ | `33_devtools_bearer.png` | DevTools → *Network*: petición al backend con `Authorization: Bearer …` (token recortado). Versión local lista; opcional repetirla en AWS |
-| ⬜ | `34_front_mas_vendidos.png` | Vista "Más vendidos" con datos |
-| ⬜ | `35_front_sin_stock.png` | Carrito con el aviso "Sin stock" |
-| ⬜ | `36_aws_rabbitmq_dashboard.png` | Dashboard RabbitMQ en AWS: colas con mensajes procesados |
-| ⬜ | `37_aws_kafkaui_metricas.png` | Kafka-UI en AWS: tópicos, mensajes y métricas |
+| ✅ | `33b_devtools_api_gateway.png` | DevTools → *Network*: petición a `https://3191rd3t14.execute-api.us-east-1.amazonaws.com/api/productos/mas-vendidos` con 200 y `Authorization: Bearer …` (token recortado): el frontend pasa por el API Manager |
+| ✅ | `33c_aws_api_gateway_rutas.png` | Consola AWS → API Gateway → `pedidos360-api` → *Routes*: las 8 rutas `/api/{productos,carrito,rabbitmq,kafka}` |
+| ✅ | `34_front_mas_vendidos.png` | Vista "Más vendidos" con datos (contra la EC2) |
+| ✅ | `35_front_sin_stock.png` | Carrito con el aviso "Sin stock" y la compra bloqueada |
+| ✅ | `35b_aws_logs_flujo_stock.png` | Logs en la EC2: pedido `PED-EP3-AWS-0001` por RabbitMQ (ACK) → `STOCK_DESCONTADO` en Kafka → carrito `disponible false` |
+| ✅ | `36_aws_rabbitmq_dashboard.png` | Dashboard RabbitMQ en AWS: 4 colas *running* con DLX/TTL |
+| ✅ | `36b_aws_rabbitmq_nodos.png` | RabbitMQ en AWS → *Overview*: los 3 nodos del clúster |
+| ✅ | `37_aws_kafkaui_metricas.png` | Kafka-UI en AWS → *Brokers*: 3 brokers, 0 réplicas fuera de sincronía |
+| ✅ | `37b_aws_kafkaui_topicos.png` | Kafka-UI en AWS → *Topics*: mensajes por tópico, particiones y RF 3 |
+| ✅ | `37c_aws_kafkaui_mensajes_inventario.png` | Kafka-UI en AWS → evento `STOCK_DESCONTADO` (6 → 0) del pedido `PED-EP3-AWS-0001` |
+| ✅ | `37d_aws_kafkaui_consumers.png` | Kafka-UI en AWS → *Consumers*: 2 grupos STABLE con 3 miembros |
 
 ## 8. Entrega
 | ✔ | Archivo | Qué debe verse |
 |---|---|---|
-| ⬜ | `38_repo_publico.png` | Repositorio GitHub público |
+| ✅ | `38_repo_publico.png` | Repositorio GitHub público |
