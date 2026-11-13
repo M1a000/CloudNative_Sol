@@ -150,3 +150,30 @@
 .pedido-confirmado h2 {
     color: #198754;
 }
+
+/* --- Disponibilidad sincronizada desde Kafka (pedidos360.inventario.actualizado) --- */
+
+.aviso-sin-stock {
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    background-color: #fff3e0;
+    border: 1px solid #ffb74d;
+    color: #8a4b00;
+}
+
+.cart-item.agotado {
+    opacity: 0.6;
+    border: 1px solid #ef9a9a;
+}
+
+.badge-sin-stock {
+    display: inline-block;
+    margin-left: 10px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    background-color: #c62828;
+    color: white;
+    vertical-align: middle;
+}

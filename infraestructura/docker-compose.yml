@@ -1,31 +1,61 @@
-# Despliegue completo del backend en la EC2: RabbitMQ + MySQL + los 3 microservicios.
-# Lo levanta infraestructura/desplegar.sh (los .jar deben estar compilados antes).
-# Para desarrollo local se sigue usando el docker-compose.yml de la raiz (solo RabbitMQ y MySQL).
-services:
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: rabbitmq-server
-    restart: unless-stopped
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: admin123
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
+# =============================================================================
+# Despliegue completo de Pedidos360 en la EC2 (lo levanta infraestructura/desplegar.sh,
+# con los .jar ya compilados).
+#
+# Reutiliza la MISMA infraestructura de mensajería que el entorno local (carpeta docker/):
+#   - Clúster RabbitMQ de 3 nodos       docker/rabbitmq-cluster.yml   :15672 (admin / admin123)
+#   - Kafka: Zookeeper + 3 brokers      docker/kafka.yml              (solo red interna)
+#     + kafka-init (crea los tópicos con particiones, réplicas, retención y cleanup policy)
+#   - Kafka-UI                          docker/kafka-ui.yml           :8090
+# y agrega MySQL y los 4 microservicios:
+#   productos-catalogo :8081 · venta-carrito :8082 · rabbitmq-admin :8083 · kafka-admin :8084
+#
+# Los microservicios corren en contenedores, por eso usan los nombres internos de la red
+# Docker (rabbitmqN:5672 y kafkaN:29092) en vez de localhost.
+# Para desarrollo local se sigue usando el docker-compose.yml de la raíz.
+# =============================================================================
+include:
+  - ../docker/rabbitmq-cluster.yml
+  - ../docker/kafka-ui.yml          # incluye a su vez docker/kafka.yml
 
+x-servicio-java: &servicio-java
+  restart: unless-stopped
+  # La EC2 comparte memoria con 3 nodos RabbitMQ y 3 brokers Kafka: se acota el heap de cada JVM.
+  # preferIPv4Stack: la red de Docker no tiene IPv6 y sin esto la JVM falla al leer la
+  # configuración OIDC de Azure AD ("Network unreachable") y el microservicio no arranca.
+  logging:
+    driver: json-file
+    options:
+      max-size: "20m"
+      max-file: "3"
+
+x-entorno-mensajeria: &entorno-mensajeria
+  RABBITMQ_ADDRESSES: rabbitmq1:5672,rabbitmq2:5672,rabbitmq3:5672
+  KAFKA_BOOTSTRAP_SERVERS: kafka1:29092,kafka2:29092,kafka3:29092
+  DB_HOST: mysql
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:4200}
+  JAVA_TOOL_OPTIONS: "-Xms128m -Xmx320m -Djava.net.preferIPv4Stack=true"
+
+x-espera-infra: &espera-infra
+  rabbitmq1:
+    condition: service_healthy
+  rabbitmq2:
+    condition: service_healthy
+  rabbitmq3:
+    condition: service_healthy
+  mysql:
+    condition: service_healthy
+  # Los tópicos deben existir antes de producir/consumir (auto.create.topics=false)
+  kafka-init:
+    condition: service_completed_successfully
+
+services:
   mysql:
     image: mysql:8.0
     container_name: mysql-server
     restart: unless-stopped
     ports:
-      - "3306:3306"
+      - "${MYSQL_PUERTO:-3306}:3306"
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: catalogo_db
@@ -38,45 +68,53 @@ services:
       retries: 12
 
   productos-catalogo:
+    <<: *servicio-java
     build: ../back-app/productos-catalogo
     container_name: productos-catalogo
-    restart: unless-stopped
     ports:
       - "8081:8081"
-    environment: &entorno-servicio
-      RABBITMQ_ADDRESSES: rabbitmq:5672
-      DB_HOST: mysql
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:4200}
-    depends_on: &espera-infra
-      rabbitmq:
-        condition: service_healthy
-      mysql:
-        condition: service_healthy
+    environment:
+      <<: *entorno-mensajeria
+    depends_on: *espera-infra
 
   venta-carrito:
+    <<: *servicio-java
     build: ../back-app/venta-carrito
     container_name: venta-carrito
-    restart: unless-stopped
     ports:
       - "8082:8082"
     environment:
-      <<: *entorno-servicio
+      <<: *entorno-mensajeria
       CATALOGO_URL: http://productos-catalogo:8081
     depends_on: *espera-infra
 
   rabbitmq-admin:
+    <<: *servicio-java
     build: ../back-app/rabbitmq-admin
     container_name: rabbitmq-admin
-    restart: unless-stopped
     ports:
       - "8083:8083"
     environment:
-      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_HOST: rabbitmq1
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:4200}
+      JAVA_TOOL_OPTIONS: "-Xms64m -Xmx256m -Djava.net.preferIPv4Stack=true"
     depends_on:
-      rabbitmq:
+      rabbitmq1:
         condition: service_healthy
 
+  kafka-admin:
+    <<: *servicio-java
+    build: ../back-app/kafka-admin
+    container_name: kafka-admin
+    ports:
+      - "8084:8084"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka1:29092,kafka2:29092,kafka3:29092
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:4200}
+      JAVA_TOOL_OPTIONS: "-Xms64m -Xmx256m -Djava.net.preferIPv4Stack=true"
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+
 volumes:
-  rabbitmq_data:
   mysql_data:

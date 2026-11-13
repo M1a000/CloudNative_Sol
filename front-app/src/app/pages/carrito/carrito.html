@@ -40,11 +40,20 @@
 
     } @else {
 
+        @if (itemsSinStock().length > 0) {
+
+            <div class="aviso-sin-stock" role="alert">
+                ⚠️ {{ itemsSinStock().length }} producto(s) de tu carrito se quedaron sin stock.
+                Quítalos para poder confirmar el pedido.
+            </div>
+
+        }
+
         <div class="carrito-items">
 
             @for (item of items(); track item.backendId) {
 
-                <div class="cart-item">
+                <div class="cart-item" [class.agotado]="item.disponible === false">
 
                     <img
                         [src]="item.producto.imagen"
@@ -55,6 +64,10 @@
 
                         <h3>
                             {{ item.producto.nombre }}
+
+                            @if (item.disponible === false) {
+                                <span class="badge-sin-stock">Sin stock</span>
+                            }
                         </h3>
 
                         <p>
@@ -75,6 +88,7 @@
                         </span>
 
                         <button
+                            [disabled]="item.disponible === false"
                             (click)="aumentar(item)">
                             +
                         </button>
@@ -112,7 +126,7 @@
 
             <button
                 class="comprar"
-                [disabled]="confirmando()"
+                [disabled]="confirmando() || itemsSinStock().length > 0"
                 (click)="confirmar()">
 
                 {{ confirmando() ? 'Confirmando...' : 'Continuar compra' }}

@@ -11,7 +11,8 @@ El detalle del backend (topología de RabbitMQ, ACK/NACK, API del administrador)
 
 | Carpeta | Contenido |
 |---|---|
-| `back-app/` | 3 microservicios Spring Boot: `productos-catalogo` (8081), `venta-carrito` (8082), `rabbitmq-admin` (8083) |
+| `back-app/` | 4 microservicios Spring Boot: `productos-catalogo` (8081), `venta-carrito` (8082), `rabbitmq-admin` (8083), `kafka-admin` (8084) |
+| `docker/` | Clúster RabbitMQ (3 nodos), Kafka (Zookeeper + 3 brokers) y Kafka-UI; los usan tanto el entorno local como la EC2 |
 | `front-app/` | Frontend Angular (4200) |
 | `infraestructura/` | Terraform y scripts de despliegue en la EC2 |
 
@@ -69,14 +70,16 @@ Anotar la IP: se usa en todos los pasos siguientes (aparece como `IP`). Para ver
 
 ### 3. Esperar el despliegue (8 a 10 minutos)
 
-La instancia instala Docker, clona el repositorio, compila los 3 microservicios y los levanta junto a RabbitMQ y MySQL. Está listo cuando estas direcciones responden en el navegador:
+La instancia (`t3.large`, 8 GB) instala Docker, clona el repositorio, compila los 4 microservicios y los levanta junto al clúster RabbitMQ (3 nodos), Kafka (Zookeeper + 3 brokers + Kafka-UI) y MySQL, usando `infraestructura/docker-compose.yml`. Está listo cuando estas direcciones responden en el navegador:
 
 | Dirección | Debe mostrar |
 |---|---|
 | `http://IP:8081/api/productos/ping` | Texto de servicio activo |
 | `http://IP:8082/api/carrito/ping` | `venta-carrito activo` |
 | `http://IP:8083/swagger-ui.html` | Documentación del administrador |
-| `http://IP:15672` | Dashboard de RabbitMQ (usuario `admin`, clave `admin123`) |
+| `http://IP:8084/swagger-ui.html` | Documentación de kafka-admin |
+| `http://IP:15672` | Dashboard de RabbitMQ (usuario `admin`, clave `admin123`), con los 3 nodos en *Overview* |
+| `http://IP:8090` | Kafka-UI: 3 brokers y los tópicos `pedidos360.ventas.confirmadas` y `pedidos360.inventario.actualizado` (más sus `.DLT`) |
 
 En el dashboard, pestaña **Queues and Streams**, deben aparecer `pedidos.stock.queue`, `pedidos.ticket.queue`, `pedidos.stock.dlq` y `pedidos.ticket.dlq`.
 
@@ -110,6 +113,12 @@ Y dejar corriendo un log en cada terminal:
 ```bash
 docker logs -f productos-catalogo     # terminal 1: stock y su DLQ
 docker logs -f venta-carrito          # terminal 2: productor, tickets y su DLQ
+```
+
+Para Kafka, buscar en esos mismos logs `KAFKA-PRODUCTOR`, `KAFKA-CONSUMIDOR` y `KAFKA-DLT`:
+
+```bash
+docker logs productos-catalogo 2>&1 | grep KAFKA
 ```
 
 Se sale del log con `Ctrl + C` y de la instancia con `exit`.
@@ -355,9 +364,9 @@ cd /opt/pedidos360 && sudo git pull && sudo bash infraestructura/desplegar.sh
 |---|---|
 | `terraform apply` dice que las credenciales no son válidas o expiraron | Reiniciar el laboratorio, copiar las credenciales nuevas y repetir `source credenciales.sh` |
 | `terraform apply` falla con `InvalidKeyPair.NotFound` | El key pair no existe en la cuenta: usar `-var "key_name=vockey"` |
-| Las direcciones de la EC2 no cargan después de 10 minutos | Entrar por SSH y ejecutar `sudo cat /var/log/arranque.log` (al final debe decir `ARRANQUE COMPLETO`) y `docker ps` (deben verse 5 contenedores) |
+| Las direcciones de la EC2 no cargan después de 10 minutos | Entrar por SSH y ejecutar `sudo cat /var/log/arranque.log` (al final debe decir `ARRANQUE COMPLETO`) y `docker ps` (con `docker ps -a` deben verse 14 contenedores: 13 en *Up* y `kafka-init` en *Exited (0)*, porque solo crea los tópicos) |
 | Dejó de cargar después de cambiar de red | La IP propia cambió: repetir `terraform apply` |
-| Un microservicio se reinicia en la EC2 | `docker logs productos-catalogo` (o el que corresponda) muestra el error |
+| Un microservicio se reinicia en la EC2 | `docker logs productos-catalogo` (o el que corresponda) muestra el error. Si dice `OOMKilled` (`docker inspect`), revisar la memoria con `free -h` |
 | El frontend muestra errores de CORS | La URL del frontend debe ser `http://localhost:4200` |
 | El login vuelve con error de `redirect_uri` | Abrir el frontend exactamente en `http://localhost:4200`, que es la URL registrada en Azure AD |
 | El backend responde 401 | No hay sesión iniciada o el JWT de Postman venció (dura cerca de 1 hora): copiar uno nuevo |

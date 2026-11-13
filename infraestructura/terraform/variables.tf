@@ -22,15 +22,15 @@ variable "key_name" {
   default     = "pedidos360"
 }
 variable "instance_type" {
-  description = "Tipo de instancia. t3.medium (4 GB) alcanza para RabbitMQ, MySQL y los 3 microservicios; t2.micro (1 GB) no"
+  description = "Tipo de instancia. EP3: t3.large (2 vCPU, 8 GB) para el clúster RabbitMQ (3 nodos), Kafka (Zookeeper + 3 brokers), Kafka-UI, MySQL y 4 microservicios. t3.medium (4 GB) ya no alcanza"
   type        = string
-  default     = "t3.medium"
+  default     = "t3.large"
 }
 
 variable "repo_url" {
   description = "Repositorio público de GitHub que la instancia clona para desplegar el backend"
   type        = string
-  default     = "https://github.com/hector-alveal/cloud_native.git"
+  default     = "https://github.com/M1a000/CloudNative_Sol.git"
 }
 
 variable "rama" {

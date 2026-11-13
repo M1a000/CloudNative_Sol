@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, computed, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 
 import { CarritoService, PedidoConfirmado } from '../../services/carrito';
@@ -20,6 +20,9 @@ export class CarritoComponent implements OnInit {
     confirmando = signal(false);
     pedidoConfirmado = signal<PedidoConfirmado | null>(null);
     errorPedido = signal('');
+
+    // Items agotados segun el ultimo evento de inventario recibido por Kafka
+    itemsSinStock = computed(() => this.items().filter((item) => item.disponible === false));
 
     constructor(
         private carritoService: CarritoService
@@ -92,7 +95,11 @@ export class CarritoComponent implements OnInit {
             },
             error: (err) => {
                 console.error('Error al confirmar el pedido', err);
-                if (err.status === 422) {
+                if (err.status === 409) {
+                    // El backend rechaza el pedido si hay productos agotados: se recarga para marcarlos.
+                    this.errorPedido.set('Hay productos sin stock en tu carrito. Quítalos para continuar.');
+                    this.cargarCarrito();
+                } else if (err.status === 422) {
                     this.errorPedido.set('Tu carrito está vacío.');
                 } else if (err.status === 503) {
                     this.errorPedido.set('El servicio de pedidos no está disponible. Tu carrito sigue guardado, intenta de nuevo en unos minutos.');
@@ -107,7 +114,8 @@ export class CarritoComponent implements OnInit {
 
     obtenerTotal(): number {
 
-        return this.items().reduce(
+        // Los productos sin stock no se cobran: el pedido no se puede confirmar con ellos
+        return this.items().filter((item) => item.disponible !== false).reduce(
             (total, item) => total + (item.producto.precio * item.cantidad),
             0
         );

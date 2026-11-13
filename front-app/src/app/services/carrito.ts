@@ -17,6 +17,8 @@ interface ItemCarritoBackend {
     cantidad: number;
     precioUnitario: number;
     total: number;
+    // Sincronizado desde Kafka (pedidos360.inventario.actualizado). null = disponible.
+    disponible?: boolean | null;
 }
 
 // Respuesta de POST /api/carrito/{usuarioId}/confirmar
@@ -92,11 +94,8 @@ export class CarritoService {
     // Si tenemos el producto completo a mano (recien agregado), lo usamos para no perder
     // imagen/descripcion/categoria/stock, que el backend de carrito no guarda.
     private aItemCarrito(item: ItemCarritoBackend, productoCompleto?: Producto): ItemCarrito {
-        return {
-            backendId: item.id,
-            cantidad: item.cantidad,
-            // El backend de carrito no guarda imagen ni descripcion: se toman del catalogo del front.
-            producto: productoCompleto ?? PRODUCTOS.find((p) => p.id === item.productoId) ?? {
+        // El backend de carrito no guarda imagen ni descripcion: se toman del catalogo del front.
+        const producto = productoCompleto ?? PRODUCTOS.find((p) => p.id === item.productoId) ?? {
                 id: item.productoId,
                 nombre: item.nombreProducto,
                 descripcion: '',
@@ -104,7 +103,14 @@ export class CarritoService {
                 imagen: '',
                 categoria: '',
                 stock: 0,
-            },
+            };
+
+        return {
+            backendId: item.id,
+            cantidad: item.cantidad,
+            // El precio vigente es el del backend: Kafka lo actualiza si cambia en el catalogo.
+            producto: { ...producto, precio: item.precioUnitario ?? producto.precio },
+            disponible: item.disponible !== false,
         };
     }
 

@@ -1,5 +1,6 @@
 #!/bin/bash
-# Compila los 3 microservicios y los (re)levanta junto a RabbitMQ y MySQL en la EC2.
+# Compila los 4 microservicios y los (re)levanta junto al cluster RabbitMQ, Kafka
+# (Zookeeper + 3 brokers + Kafka-UI) y MySQL en la EC2.
 # Lo ejecuta arranque.sh al crear la instancia. Para actualizar despues de un push:
 #   cd /opt/pedidos360 && sudo git pull && sudo bash infraestructura/desplegar.sh
 set -eu
@@ -19,4 +20,6 @@ export CORS_ORIGINS="http://localhost:4200,http://$IP_PUBLICA:4200"
 cd "$RAIZ/infraestructura"
 docker compose up -d --build
 
-echo "Backend desplegado en http://$IP_PUBLICA (8081 catalogo, 8082 carrito, 8083 admin, 15672 RabbitMQ)"
+echo "Backend desplegado en http://$IP_PUBLICA"
+echo "  8081 productos-catalogo · 8082 venta-carrito · 8083 rabbitmq-admin · 8084 kafka-admin"
+echo "  15672 RabbitMQ (admin/admin123) · 8090 Kafka-UI"

@@ -114,14 +114,14 @@ resource "aws_instance" "servidor_infraestructura" {
   vpc_security_group_ids = [aws_security_group.sg_microservicios.id]
   key_name               = var.key_name
 
-  # Al crear la instancia: instala Docker, clona el repo y levanta RabbitMQ, MySQL y los 3 microservicios.
+  # Al crear la instancia: instala Docker, clona el repo y levanta RabbitMQ, Kafka, MySQL y los 4 microservicios.
   # El replace evita que un salto de linea de Windows (CRLF) rompa el script en Linux.
   user_data                   = replace(templatefile("${path.module}/arranque.sh", { repo_url = var.repo_url, rama = var.rama }), "\r\n", "\n")
   user_data_replace_on_change = true
 
-  # Espacio para las imagenes Docker (el disco por defecto de 8 GB queda justo)
+  # Espacio para las imagenes Docker (RabbitMQ, Kafka, Kafka-UI, MySQL, Maven y 4 microservicios)
   root_block_device {
-    volume_size = 20
+    volume_size = 30
     volume_type = "gp3"
   }
 
@@ -145,4 +145,13 @@ output "rabbitmq_dashboard" {
 output "ssh" {
   description = "Comando para entrar a la instancia"
   value       = "ssh -i ${var.key_name}.pem ubuntu@${aws_instance.servidor_infraestructura.public_ip}"
+}
+output "kafka_ui" {
+  description = "Kafka-UI: brokers, tópicos, mensajes y consumer groups"
+  value       = "http://${aws_instance.servidor_infraestructura.public_ip}:8090"
+}
+
+output "kafka_admin_swagger" {
+  description = "Swagger del microservicio kafka-admin (requiere JWT)"
+  value       = "http://${aws_instance.servidor_infraestructura.public_ip}:8084/swagger-ui.html"
 }

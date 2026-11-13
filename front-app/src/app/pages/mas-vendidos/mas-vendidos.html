@@ -1,0 +1,83 @@
+<section class="mas-vendidos">
+
+    <h1>🏆 Más vendidos</h1>
+
+    <p class="subtitulo">
+        Ranking en tiempo real calculado a partir de las ventas confirmadas
+        (eventos del tópico Kafka <code>pedidos360.ventas.confirmadas</code>).
+    </p>
+
+    <div class="controles">
+
+        <label for="top">Mostrar top</label>
+
+        <select id="top" [value]="top()" (change)="cambiarTop($any($event.target).value)">
+            @for (opcion of opcionesTop; track opcion) {
+                <option [value]="opcion">{{ opcion }}</option>
+            }
+        </select>
+
+        <button class="refrescar" (click)="cargar()" [disabled]="cargando()">
+            ↻ Actualizar
+        </button>
+
+    </div>
+
+    @if (cargando()) {
+
+        <p class="estado">Cargando métricas...</p>
+
+    } @else if (error()) {
+
+        <p class="estado error">{{ error() }}</p>
+
+    } @else if (ranking().length === 0) {
+
+        <div class="vacio">
+            <h2>Aún no hay ventas registradas</h2>
+            <p>Confirma un pedido desde el carrito y vuelve a esta vista.</p>
+        </div>
+
+    } @else {
+
+        <ol class="ranking">
+
+            @for (m of ranking(); track m.productoId; let i = $index) {
+
+                <li class="fila">
+
+                    <span class="posicion">#{{ i + 1 }}</span>
+
+                    @if (imagenDe(m.productoId)) {
+                        <img [src]="imagenDe(m.productoId)" [alt]="m.nombreProducto">
+                    }
+
+                    <div class="detalle">
+
+                        <h3>{{ m.nombreProducto }}</h3>
+
+                        <div class="barra">
+                            <div class="relleno" [style.width.%]="porcentaje(m)"></div>
+                        </div>
+
+                        <p class="datos">
+                            <strong>{{ m.unidadesVendidas }}</strong> unidades ·
+                            {{ m.cantidadPedidos }} pedido(s) ·
+                            ${{ m.montoVendido | number:'1.0-0' }}
+                        </p>
+
+                        @if (m.ultimaVenta) {
+                            <p class="ultima">Última venta: {{ m.ultimaVenta | date:'dd/MM/yyyy HH:mm' }}</p>
+                        }
+
+                    </div>
+
+                </li>
+
+            }
+
+        </ol>
+
+    }
+
+</section>

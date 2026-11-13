@@ -195,3 +195,12 @@ mvn -pl kafka-admin test -Dkafka.local=true -Dtest=KafkaAdminServiceClusterLocal
 | 7 | `kafka-admin` contra el clúster real | Crear (2 particiones, RF 3, configs) · duplicado → error · RF 5 > 3 brokers → rechazo · modificar/restablecer `retention.ms` · 2→4 particiones (no permite reducir) · offsets y lag de un grupo · reset a EARLIEST (lag 6) · eliminar grupo · no elimina `__consumer_offsets` · eliminar tópico |
 | 8 | Seguridad | Sin JWT, todos los endpoints de `kafka-admin` y `/api/productos/mas-vendidos` responden **401** |
 | 9 | Tests unitarios | 61 tests en verde (catálogo 19 · carrito 16 · rabbitmq-admin 15 · kafka-admin 11) |
+
+## 11. Frontend: datos de Kafka visibles para el usuario (12/11/2026)
+
+| Vista | Qué muestra | Origen Kafka | Archivos (`front-app/src/app/`) |
+|---|---|---|---|
+| **🏆 Más vendidos** (`/mas-vendidos`, protegida con `MsalGuard`) | Ranking top 3/5/10 con unidades, pedidos, monto, última venta y barra proporcional; estados de carga, vacío y error | `pedidos360.ventas.confirmadas` → `productos-catalogo` → `GET /api/productos/mas-vendidos?top=N` (con JWT) | `pages/mas-vendidos/`, `services/metricas.ts`, `components/models/metrica-venta.ts` |
+| **Carrito: aviso "Sin stock"** | Etiqueta "Sin stock" en cada item agotado, aviso general, botón *Continuar compra* deshabilitado y total sin los agotados. Si el backend igual responde **409**, se informa y se recarga el carrito. El precio mostrado es el vigente del backend (también lo actualiza Kafka) | `pedidos360.inventario.actualizado` → `venta-carrito` (campo `disponible` de cada item) | `pages/carrito/`, `services/carrito.ts`, `components/models/carrito.ts` |
+
+Pruebas unitarias del frontend (Vitest, `npx ng test --watch=false`): **12 archivos, 22 tests en verde**. Las nuevas cubren la llamada a `mas-vendidos` con `top`, el ranking, los estados vacío y error, el mapeo de `disponible` y del precio vigente, el bloqueo de la compra con productos agotados y la respuesta 409.
