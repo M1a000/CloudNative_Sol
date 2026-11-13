@@ -1,12 +1,5 @@
 # Checklist de capturas – PDF de evidencias EP3
 
-Guardar cada captura en `docs/evidencias/capturas/` con **el nombre exacto** de la tabla. Claude avisa en el momento de sacar cada una y la marca con ✅ cuando la revisa.
-
-> ⚠️ Antes de guardar, tapar o recortar: tokens JWT completos, claves de AWS, contraseñas y el `tenant-id` / `client-id` si se ven enteros.
-> La carpeta `capturas/` está en `.gitignore`: las imágenes no se suben a GitHub, solo van en el PDF.
->
-> **Logs**: cada microservicio escribe en `logs/<servicio>.log` (raíz del proyecto). Abrir el archivo en VS Code, buscar (Ctrl+F) el texto indicado entre comillas y capturar esas líneas.
-> **🔑 = requiere JWT** (token de Azure AD obtenido al iniciar sesión en el frontend).
 
 ## 1. Planificación
 | ✔ | Archivo | Qué debe verse |
