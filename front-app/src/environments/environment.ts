@@ -15,6 +15,6 @@ export const environment = {
   // URL del API Manager propio (terraform output api_gateway_url): ambas son la misma porque
   // el gateway enruta /api/productos y /api/carrito. Apuntando directo
   // a la EC2 son http://IP:8081 (catalogo) y http://IP:8082 (carrito).
-  catalogoUrl: 'https://3191rd3t14.execute-api.us-east-1.amazonaws.com',
-  carritoUrl: 'https://3191rd3t14.execute-api.us-east-1.amazonaws.com',
+  catalogoUrl: 'https://b1tnl0np4i.execute-api.us-east-1.amazonaws.com',
+  carritoUrl: 'https://b1tnl0np4i.execute-api.us-east-1.amazonaws.com',
 };
