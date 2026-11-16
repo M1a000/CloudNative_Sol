@@ -14,7 +14,7 @@
 
     <div class="productos-grid">
 
-        @for (producto of productos; track producto.id) {
+        @for (producto of productos(); track producto.id) {
 
             <app-producto-card
                 [producto]="producto">
