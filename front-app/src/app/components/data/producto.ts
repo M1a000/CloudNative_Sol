@@ -17,7 +17,7 @@ export const PRODUCTOS: Producto[] = [
         nombre: 'Hamburguesa BBQ',
         descripcion: 'Carne de vacuno, queso cheddar, tocino y salsa BBQ.',
         precio: 7490,
-        imagen: '/img/hamburguesa-bbq.jpg',
+        imagen: '/img/hamburguesa-bbq.png',
         categoria: 'Hamburguesas',
         stock: 8
     },
