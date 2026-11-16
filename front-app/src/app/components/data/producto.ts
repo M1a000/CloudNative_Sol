@@ -7,7 +7,7 @@ export const PRODUCTOS: Producto[] = [
         nombre: 'Hamburguesa Clásica',
         descripcion: 'Carne de vacuno, queso, lechuga, tomate y salsa especial.',
         precio: 5990,
-        imagen: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcScRz3jE-s2KzdkDRyd6WLmt3yqtqu_H2EtaUNeTmNxOw&s=10',
+        imagen: '/img/hamburguesa-clasica.jpeg',
         categoria: 'Hamburguesas',
         stock: 10
     },
@@ -17,7 +17,7 @@ export const PRODUCTOS: Producto[] = [
         nombre: 'Hamburguesa BBQ',
         descripcion: 'Carne de vacuno, queso cheddar, tocino y salsa BBQ.',
         precio: 7490,
-        imagen: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSYpDh7Hqciw3KJLABCdRMT5xLWLn1PyAIweK9sEO4fzw&s=10',
+        imagen: '/img/hamburguesa-bbq.jpg',
         categoria: 'Hamburguesas',
         stock: 8
     },
@@ -27,7 +27,7 @@ export const PRODUCTOS: Producto[] = [
         nombre: 'Hamburguesa Doble',
         descripcion: 'Doble carne, doble queso, cebolla y salsa especial.',
         precio: 8990,
-        imagen: '/img/hamburguesa-doble.jpeg',
+        imagen: '/img/hamburguesa-doble.png',
         categoria: 'Hamburguesas',
         stock: 6
     },
