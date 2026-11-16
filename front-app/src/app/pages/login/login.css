@@ -1,6 +1,5 @@
-
 .login-page {
-    min-height: 80vh;
+    min-height: 70vh;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -9,88 +8,36 @@
 
 .login-container {
     width: 100%;
-    max-width: 400px;
-    padding: 35px;
+    max-width: 420px;
+    padding: 36px 32px;
     background-color: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-}
-
-.login-header {
+    border-radius: 24px;
+    box-shadow: var(--sombra);
     text-align: center;
-    margin-bottom: 30px;
 }
 
 .login-header h1 {
-    margin-bottom: 10px;
+    margin: 0 0 6px;
+    font-size: 40px;
+}
+
+.login-header h1 span {
+    color: var(--rojo);
 }
 
 .login-header h2 {
-    margin-bottom: 8px;
+    margin: 0 0 8px;
+    font-size: 26px;
 }
 
 .login-header p {
-    color: #666;
+    margin: 0 0 26px;
+    color: var(--gris);
+    font-weight: 600;
 }
 
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: bold;
-}
-
-.form-group input {
+.btn-microsoft {
     width: 100%;
-    padding: 12px;
-    box-sizing: border-box;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 15px;
+    padding: 15px;
+    font-size: 18px;
 }
-
-.form-group input:focus {
-    outline: none;
-    border-color: #007bff;
-}
-
-button {
-    width: 100%;
-    padding: 12px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: bold;
-}
-
-button:hover {
-    background-color: #0056b3;
-}
-
-.error {
-    color: #dc3545;
-    text-align: center;
-    margin-bottom: 15px;
-    font-size: 14px;
-}
-
-.login-footer {
-    text-align: center;
-    margin-top: 25px;
-}
-
-.login-footer a {
-    color: #007bff;
-    text-decoration: none;
-}
-
-.login-footer a:hover {
-    text-decoration: underline;
-}
-

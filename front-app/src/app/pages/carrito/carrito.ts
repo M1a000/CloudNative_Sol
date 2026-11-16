@@ -1,12 +1,14 @@
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 
 import { CarritoService, PedidoConfirmado } from '../../services/carrito';
+import { PanelCarritoService } from '../../services/panel-carrito';
 import { ItemCarrito } from '../../components/models/carrito';
 
 @Component({
     selector: 'app-carrito',
-    imports: [DecimalPipe],
+    imports: [DecimalPipe, RouterLink],
     templateUrl: './carrito.html',
     styleUrl: './carrito.css'
 })
@@ -23,6 +25,9 @@ export class CarritoComponent implements OnInit {
 
     // Items agotados segun el ultimo evento de inventario recibido por Kafka
     itemsSinStock = computed(() => this.items().filter((item) => item.disponible === false));
+
+    // Mantiene sincronizado el boton del carrito de la barra (total y cantidad)
+    private panel = inject(PanelCarritoService);
 
     constructor(
         private carritoService: CarritoService
@@ -91,6 +96,7 @@ export class CarritoComponent implements OnInit {
             next: (pedido) => {
                 this.pedidoConfirmado.set(pedido);
                 this.items.set([]);
+                this.panel.items.set([]);
                 this.confirmando.set(false);
             },
             error: (err) => {
@@ -129,6 +135,7 @@ export class CarritoComponent implements OnInit {
         this.carritoService.obtenerItems().subscribe({
             next: (items) => {
                 this.items.set(items);
+                this.panel.items.set(items);
                 this.cargando.set(false);
             },
             error: (err) => {

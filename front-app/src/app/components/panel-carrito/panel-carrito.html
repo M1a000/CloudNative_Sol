@@ -1,0 +1,62 @@
+<div class="velo" [class.abierto]="panel.abierto()" (click)="panel.cerrar()"></div>
+
+<aside class="panel" [class.abierto]="panel.abierto()" aria-label="Carrito">
+
+    <div class="panel-top">
+        <h2>Tu carrito</h2>
+        <button class="cerrar" aria-label="Cerrar" (click)="panel.cerrar()">×</button>
+    </div>
+
+    @if (panel.mensaje()) {
+        <div class="ok">✓ {{ panel.mensaje() }}</div>
+    }
+
+    <div class="items">
+
+        @for (item of panel.items(); track item.backendId) {
+
+            <div class="item" [class.agotado]="item.disponible === false">
+
+                <div class="foto">
+                    <img class="img-producto" [src]="item.producto.imagen" [alt]="item.producto.nombre">
+                </div>
+
+                <div class="datos">
+                    <div class="nombre">{{ item.producto.nombre }}</div>
+                    <div class="sub">${{ item.producto.precio | number:'1.0-0' }} c/u</div>
+
+                    @if (item.disponible === false) {
+                        <span class="sin-stock">Sin stock</span>
+                    } @else {
+                        <div class="cant">
+                            <button (click)="panel.cambiarCantidad(item, -1)"
+                                    [attr.aria-label]="item.cantidad === 1 ? 'Quitar' : 'Restar uno'">
+                                {{ item.cantidad === 1 ? '🗑' : '−' }}
+                            </button>
+                            <span>{{ item.cantidad }}</span>
+                            <button (click)="panel.cambiarCantidad(item, 1)" aria-label="Sumar uno">+</button>
+                        </div>
+                    }
+                </div>
+
+                <span class="monto">${{ item.producto.precio * item.cantidad | number:'1.0-0' }}</span>
+
+            </div>
+
+        } @empty {
+
+            <p class="vacio">Tu carrito está vacío.</p>
+
+        }
+
+    </div>
+
+    <div class="panel-total">
+        <h3>Total</h3>
+        <h3>${{ panel.total() | number:'1.0-0' }}</h3>
+    </div>
+
+    <button class="ver-carrito" (click)="verCarrito()">Ver carrito</button>
+    <button class="seguir" (click)="panel.cerrar()">Seguir comprando</button>
+
+</aside>

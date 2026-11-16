@@ -3,6 +3,7 @@
     <div class="product-image">
 
         <img
+            class="img-producto"
             [src]="producto.imagen"
             [alt]="producto.nombre"
         >
@@ -23,20 +24,37 @@
             {{ producto.categoria }}
         </span>
 
-        <h4>
-            ${{ producto.precio | number:'1.0-0' }}
-        </h4>
+        <div class="fila-precio">
 
-        <p class="stock">
-            Stock: {{ producto.stock }}
-        </p>
+            <span class="precio">
+                ${{ producto.precio | number:'1.0-0' }}
+            </span>
+
+            <span class="stock">
+                Stock: {{ producto.stock }}
+            </span>
+
+        </div>
 
         <button
+            class="btn-rojo"
+            [disabled]="agregando()"
             (click)="agregarAlCarrito()">
 
-            Agregar al carrito
+            {{ agregando() ? 'Agregando...' : 'Agregar al carrito' }}
 
         </button>
+
+        @if (error()) {
+
+            <p class="error-agregar">
+                {{ error() }}
+                @if (requiereLogin()) {
+                    <a routerLink="/login">Iniciar sesión</a>
+                }
+            </p>
+
+        }
 
     </div>
 

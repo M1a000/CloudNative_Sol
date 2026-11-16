@@ -4,13 +4,15 @@ import { MsalService } from '@azure/msal-angular';
 
 import { NavbarComponent } from './components/navbar/navbar';
 import { FooterComponent } from './components/footer/footer';
+import { PanelCarritoComponent } from './components/panel-carrito/panel-carrito';
 
 @Component({
   selector: 'app-root',
   imports: [
     RouterOutlet,
     NavbarComponent,
-    FooterComponent
+    FooterComponent,
+    PanelCarritoComponent
   ],
   templateUrl: './app.html',
   styleUrl: './app.css'

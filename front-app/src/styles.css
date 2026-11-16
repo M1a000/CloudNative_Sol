@@ -1,1 +1,115 @@
-/* You can add global styles to this file, and also import other style files */
+/* Paleta y tipografia de Hamburguesas Level Up */
+:root {
+    --crema: #F5EBDC;
+    --crema-claro: #FFF8EE;
+    --cafe: #502314;
+    --cafe-oscuro: #2D0A00;
+    --rojo: #D62300;
+    --rojo-hover: #B21E00;
+    --naranjo: #FF8732;
+    --gris: #8B7B70;
+    --borde: #EADBC8;
+    --verde: #1B7A3A;
+    --sombra: 0 4px 0 var(--borde);
+    --fuente-titulo: 'Lilita One', 'Arial Rounded MT Bold', sans-serif;
+    --fuente-texto: 'Nunito', Arial, Helvetica, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--crema);
+    color: var(--cafe);
+    font-family: var(--fuente-texto);
+}
+
+h1,
+h2,
+h3 {
+    font-family: var(--fuente-titulo);
+    font-weight: 400;
+    letter-spacing: 0.3px;
+}
+
+button,
+select {
+    font-family: inherit;
+}
+
+/* Las fotos de productos tienen fondo blanco o gris claro: "multiply" las funde
+   con el fondo crema de las tarjetas para que todas se vean parejas. */
+.img-producto {
+    mix-blend-mode: multiply;
+}
+
+/* Boton principal rojo y redondeado */
+.btn-rojo {
+    background-color: var(--rojo);
+    color: white;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    font-family: var(--fuente-titulo);
+    font-size: 16px;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    transition: background-color 0.15s;
+}
+
+.btn-rojo:hover {
+    background-color: var(--rojo-hover);
+}
+
+.btn-rojo:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* Franja roja con borde ondulado (encabezado de las paginas) */
+.hero {
+    position: relative;
+    background-color: var(--rojo);
+    color: var(--crema-claro);
+    text-align: center;
+    padding: 44px 20px 60px;
+}
+
+.hero h1 {
+    margin: 0;
+    font-size: 44px;
+}
+
+.hero p {
+    margin: 8px 0 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.hero::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 24px;
+    background-color: var(--crema);
+    clip-path: polygon(0 60%, 8% 40%, 18% 70%, 30% 45%, 42% 75%, 55% 40%, 68% 70%, 80% 45%, 92% 70%, 100% 50%, 100% 100%, 0 100%);
+}
+
+@media (max-width: 600px) {
+    .hero h1 {
+        font-size: 34px;
+    }
+}

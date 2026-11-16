@@ -1,40 +1,27 @@
+<section class="hero">
+
+    <h1>Nuestro menú</h1>
+
+    <p>
+        Elige tus hamburguesas y productos favoritos.
+    </p>
+
+</section>
+
 <section class="catalogo">
 
-    <div class="catalogo-header">
+    <h2 class="titulo-seccion">Hamburguesas y más</h2>
 
-        <h1>Nuestro menú 🍔</h1>
+    <div class="productos-grid">
 
-        <p>
-            Elige tus hamburguesas y productos favoritos.
-        </p>
+        @for (producto of productos; track producto.id) {
+
+            <app-producto-card
+                [producto]="producto">
+            </app-producto-card>
+
+        }
 
     </div>
-
-        <div class="productos-grid">
-
-            @for (producto of productos; track producto.id) {
-
-                <app-producto-card
-                    [producto]="producto">
-                </app-producto-card>
-
-            }
-
-        </div>
-    <!--
-        @if (cargando) {
-    
-            <p>Cargando productos...</p>
-    
-        } @else if (error) {
-    
-            <p class="error">{{ error }}</p>
-    
-        } @else {
-    
-            
-    
-        }
-        -->
 
 </section>

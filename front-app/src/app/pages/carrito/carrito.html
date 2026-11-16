@@ -1,14 +1,16 @@
 <section class="carrito">
 
-    <h1>Mi carrito 🛒</h1>
+    <h1>Mi pedido</h1>
 
     @if (cargando()) {
 
-        <p>Cargando tu carrito...</p>
+        <p class="estado">Cargando tu carrito...</p>
 
     } @else if (pedidoConfirmado(); as pedido) {
 
-        <div class="pedido-confirmado">
+        <div class="caja pedido-confirmado">
+
+            <div class="check">✓</div>
 
             <h2>¡Pedido recibido!</h2>
 
@@ -16,7 +18,7 @@
                 N° de pedido: <strong>{{ pedido.pedidoId.slice(0, 8).toUpperCase() }}</strong>
             </p>
 
-            <p>
+            <p class="total-confirmado">
                 Total: ${{ pedido.total | number:'1.0-0' }}
             </p>
 
@@ -24,17 +26,21 @@
                 Estamos procesando tu pedido y generando tu comprobante.
             </p>
 
+            <a class="btn-rojo" routerLink="/mas-vendidos">Ver los más vendidos</a>
+
         </div>
 
     } @else if (items().length === 0) {
 
-        <div class="carrito-vacio">
+        <div class="caja carrito-vacio">
 
             <h2>Tu carrito está vacío</h2>
 
             <p>
                 Agrega algunas hamburguesas para comenzar.
             </p>
+
+            <a class="btn-rojo" routerLink="/productos">Ver el menú</a>
 
         </div>
 
@@ -49,97 +55,127 @@
 
         }
 
-        <div class="carrito-items">
+        <div class="pedido">
 
-            @for (item of items(); track item.backendId) {
+            <div class="caja">
 
-                <div class="cart-item" [class.agotado]="item.disponible === false">
+                <div class="caja-top">
 
-                    <img
-                        [src]="item.producto.imagen"
-                        [alt]="item.producto.nombre"
-                    >
-
-                    <div class="cart-info">
-
-                        <h3>
-                            {{ item.producto.nombre }}
-
-                            @if (item.disponible === false) {
-                                <span class="badge-sin-stock">Sin stock</span>
-                            }
-                        </h3>
-
-                        <p>
-                            ${{ item.producto.precio | number:'1.0-0' }}
-                        </p>
-
-                    </div>
-
-                    <div class="cantidad">
-
-                        <button
-                            (click)="disminuir(item)">
-                            -
-                        </button>
-
-                        <span>
-                            {{ item.cantidad }}
-                        </span>
-
-                        <button
-                            [disabled]="item.disponible === false"
-                            (click)="aumentar(item)">
-                            +
-                        </button>
-
-                    </div>
+                    <h2>Productos</h2>
 
                     <button
-                        class="eliminar"
-                        (click)="eliminar(item)">
+                        class="vaciar"
+                        (click)="vaciar()">
 
-                        Eliminar
+                        Vaciar
 
                     </button>
 
                 </div>
 
-            }
+                @for (item of items(); track item.backendId) {
 
-        </div>
+                    <div class="cart-item" [class.agotado]="item.disponible === false">
 
-        <div class="carrito-resumen">
+                        <div class="foto">
+                            <img
+                                class="img-producto"
+                                [src]="item.producto.imagen"
+                                [alt]="item.producto.nombre"
+                            >
+                        </div>
 
-            <h2>
-                Total:
-                ${{ obtenerTotal() | number:'1.0-0' }}
-            </h2>
+                        <div class="cart-info">
 
-            <button
-                class="vaciar"
-                (click)="vaciar()">
+                            <h3>
+                                {{ item.producto.nombre }}
 
-                Vaciar carrito
+                                @if (item.disponible === false) {
+                                    <span class="badge-sin-stock">Sin stock</span>
+                                }
+                            </h3>
 
-            </button>
+                            <p>
+                                ${{ item.producto.precio | number:'1.0-0' }} c/u
+                            </p>
 
-            <button
-                class="comprar"
-                [disabled]="confirmando() || itemsSinStock().length > 0"
-                (click)="confirmar()">
+                            <div class="cantidad">
 
-                {{ confirmando() ? 'Confirmando...' : 'Continuar compra' }}
+                                <button
+                                    [attr.aria-label]="item.cantidad === 1 ? 'Quitar' : 'Restar uno'"
+                                    (click)="disminuir(item)">
+                                    {{ item.cantidad === 1 ? '🗑' : '−' }}
+                                </button>
 
-            </button>
+                                <span>
+                                    {{ item.cantidad }}
+                                </span>
 
-            @if (errorPedido()) {
+                                <button
+                                    aria-label="Sumar uno"
+                                    [disabled]="item.disponible === false"
+                                    (click)="aumentar(item)">
+                                    +
+                                </button>
 
-                <p class="error-pedido">
-                    {{ errorPedido() }}
-                </p>
+                            </div>
 
-            }
+                        </div>
+
+                        <div class="lado-derecho">
+
+                            <span class="monto">
+                                ${{ item.producto.precio * item.cantidad | number:'1.0-0' }}
+                            </span>
+
+                            <button
+                                class="eliminar"
+                                (click)="eliminar(item)">
+
+                                Eliminar
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                }
+
+            </div>
+
+            <div class="caja carrito-resumen">
+
+                <div class="linea">
+                    <span>Subtotal</span>
+                    <span>${{ obtenerTotal() | number:'1.0-0' }}</span>
+                </div>
+
+                <div class="linea total">
+                    <span>Total</span>
+                    <span>${{ obtenerTotal() | number:'1.0-0' }}</span>
+                </div>
+
+                <button
+                    class="btn-rojo comprar"
+                    [disabled]="confirmando() || itemsSinStock().length > 0"
+                    (click)="confirmar()">
+
+                    {{ confirmando() ? 'Confirmando...' : 'Confirmar compra' }}
+
+                </button>
+
+                @if (errorPedido()) {
+
+                    <p class="error-pedido">
+                        {{ errorPedido() }}
+                    </p>
+
+                }
+
+                <a class="seguir" routerLink="/productos">Seguir comprando</a>
+
+            </div>
 
         </div>
 

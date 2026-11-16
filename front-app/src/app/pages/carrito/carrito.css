@@ -1,179 +1,264 @@
 .carrito {
-    max-width: 1000px;
-
+    max-width: 1100px;
     margin: 0 auto;
-
-    padding: 50px 25px;
+    padding: 40px 24px 60px;
 }
 
 .carrito h1 {
-    text-align: center;
-
-    margin-bottom: 40px;
+    margin: 0 0 24px;
+    font-size: 38px;
 }
 
-.carrito-vacio {
-    text-align: center;
+.estado {
+    color: var(--gris);
+}
 
-    padding: 60px 20px;
-
+.caja {
     background-color: white;
+    border-radius: 20px;
+    padding: 20px 24px;
+    box-shadow: var(--sombra);
+}
 
-    border-radius: 12px;
+.pedido {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 28px;
+    align-items: start;
+}
+
+.caja-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.caja-top h2 {
+    margin: 0;
+    font-size: 24px;
+}
+
+.vaciar {
+    border: none;
+    background: none;
+    color: var(--rojo);
+    font-weight: 800;
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 15px;
 }
 
 .cart-item {
     display: flex;
-
     align-items: center;
-
-    gap: 20px;
-
-    padding: 20px;
-
-    margin-bottom: 15px;
-
-    background-color: white;
-
-    border-radius: 10px;
-
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--borde);
 }
 
-.cart-item img {
-    width: 100px;
-    height: 80px;
+.cart-item:last-child {
+    border-bottom: none;
+}
 
-    object-fit: cover;
+.foto {
+    width: 76px;
+    height: 76px;
+    flex-shrink: 0;
+    padding: 6px;
+    border-radius: 14px;
+    background-color: var(--crema-claro);
+}
 
-    border-radius: 8px;
+.foto img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 .cart-info {
     flex: 1;
+    min-width: 0;
 }
 
 .cart-info h3 {
-    margin: 0 0 8px;
+    margin: 0 0 2px;
+    font-size: 19px;
+}
+
+.cart-info p {
+    margin: 0;
+    color: var(--gris);
+    font-size: 14px;
 }
 
 .cantidad {
-    display: flex;
-
+    display: inline-flex;
     align-items: center;
-
-    gap: 15px;
+    gap: 12px;
+    margin-top: 8px;
+    padding: 3px 12px;
+    border: 1.5px solid var(--cafe);
+    border-radius: 999px;
+    font-weight: 800;
 }
 
 .cantidad button {
-    width: 32px;
-    height: 32px;
-
     border: none;
-    border-radius: 5px;
-
+    background: none;
+    color: var(--cafe);
+    font-size: 17px;
     cursor: pointer;
+    padding: 0 2px;
+}
+
+.cantidad button:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.lado-derecho {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+}
+
+.monto {
+    font-family: var(--fuente-titulo);
+    font-size: 19px;
+    white-space: nowrap;
 }
 
 .eliminar {
     border: none;
-
-    padding: 8px 12px;
-
-    background-color: #dc3545;
-
-    color: white;
-
-    border-radius: 5px;
-
+    background: none;
+    color: var(--gris);
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: underline;
     cursor: pointer;
 }
 
-.carrito-resumen {
-    margin-top: 30px;
-
-    padding: 25px;
-
-    background-color: white;
-
-    border-radius: 10px;
-
-    text-align: right;
+.eliminar:hover {
+    color: var(--rojo);
 }
 
-.carrito-resumen button {
-    padding: 12px 20px;
-
-    margin-left: 10px;
-
-    border: none;
-
-    border-radius: 7px;
-
-    cursor: pointer;
+.carrito-resumen .linea {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-weight: 700;
 }
 
-.vaciar {
-    background-color: #6c757d;
-
-    color: white;
+.carrito-resumen .total {
+    margin-top: 8px;
+    padding-top: 14px;
+    border-top: 1px solid var(--borde);
+    font-family: var(--fuente-titulo);
+    font-size: 28px;
+    font-weight: 400;
 }
 
 .comprar {
-    background-color: #198754;
-
-    color: white;
+    width: 100%;
+    margin-top: 16px;
+    padding: 15px;
+    font-size: 18px;
 }
 
-.comprar:disabled {
-    opacity: 0.6;
-
-    cursor: not-allowed;
+.seguir {
+    display: block;
+    margin-top: 12px;
+    text-align: center;
+    color: var(--cafe);
+    font-weight: 700;
 }
 
 .error-pedido {
-    margin-top: 12px;
-
-    color: #dc3545;
+    margin: 12px 0 0;
+    color: var(--rojo);
+    font-weight: 700;
+    font-size: 14px;
 }
 
+.carrito-vacio,
 .pedido-confirmado {
-    padding: 30px;
-
-    background-color: white;
-
-    border-radius: 10px;
-
     text-align: center;
+    padding: 40px 24px;
+}
+
+.carrito-vacio h2,
+.pedido-confirmado h2 {
+    margin: 0 0 8px;
+    font-size: 30px;
+}
+
+.carrito-vacio p,
+.pedido-confirmado p {
+    color: var(--gris);
+    margin: 6px 0;
+}
+
+.carrito-vacio .btn-rojo,
+.pedido-confirmado .btn-rojo {
+    display: inline-block;
+    margin-top: 16px;
+}
+
+.check {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 12px;
+    border-radius: 50%;
+    background-color: #E8F5E9;
+    color: var(--verde);
+    font-size: 34px;
+    font-weight: 800;
+    display: grid;
+    place-items: center;
 }
 
 .pedido-confirmado h2 {
-    color: #198754;
+    color: var(--verde);
+}
+
+.pedido-confirmado .total-confirmado {
+    font-family: var(--fuente-titulo);
+    font-size: 24px;
+    color: var(--cafe);
 }
 
 /* --- Disponibilidad sincronizada desde Kafka (pedidos360.inventario.actualizado) --- */
 
 .aviso-sin-stock {
-    padding: 15px 20px;
+    padding: 14px 20px;
     margin-bottom: 20px;
-    border-radius: 10px;
-    background-color: #fff3e0;
-    border: 1px solid #ffb74d;
-    color: #8a4b00;
+    border-radius: 14px;
+    background-color: #FFF3E0;
+    border: 1px solid #FFB74D;
+    color: #8A4B00;
+    font-weight: 700;
 }
 
 .cart-item.agotado {
     opacity: 0.6;
-    border: 1px solid #ef9a9a;
 }
 
 .badge-sin-stock {
     display: inline-block;
-    margin-left: 10px;
+    margin-left: 8px;
     padding: 2px 10px;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    background-color: #c62828;
+    border-radius: 999px;
+    font-family: var(--fuente-texto);
+    font-size: 12px;
+    font-weight: 800;
+    background-color: var(--rojo);
     color: white;
     vertical-align: middle;
+}
+
+@media (max-width: 800px) {
+    .pedido {
+        grid-template-columns: 1fr;
+    }
 }

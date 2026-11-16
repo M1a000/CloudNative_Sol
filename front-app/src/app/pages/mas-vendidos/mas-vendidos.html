@@ -49,7 +49,7 @@
                     <span class="posicion">#{{ i + 1 }}</span>
 
                     @if (imagenDe(m.productoId)) {
-                        <img [src]="imagenDe(m.productoId)" [alt]="m.nombreProducto">
+                        <div class="foto"><img class="img-producto" [src]="imagenDe(m.productoId)" [alt]="m.nombreProducto"></div>
                     }
 
                     <div class="detalle">

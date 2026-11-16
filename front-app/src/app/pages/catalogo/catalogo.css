@@ -1,34 +1,16 @@
 .catalogo {
     max-width: 1200px;
-
     margin: 0 auto;
-
-    padding: 50px 25px;
+    padding: 32px 24px 60px;
 }
 
-.catalogo-header {
-    text-align: center;
-
-    margin-bottom: 40px;
-}
-
-.catalogo-header h1 {
-    font-size: 40px;
-}
-
-.catalogo-header p {
-    color: #666;
-
-    font-size: 18px;
+.titulo-seccion {
+    margin: 0 0 20px;
+    font-size: 32px;
 }
 
 .productos-grid {
     display: grid;
-
-    grid-template-columns: repeat(
-        auto-fit,
-        minmax(250px, 1fr)
-    );
-
-    gap: 25px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 22px;
 }

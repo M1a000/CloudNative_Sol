@@ -46,6 +46,10 @@ export class CarritoService {
         return cuenta?.localAccountId ?? cuenta?.username ?? 'usuario-anonimo';
     }
 
+    haySesion(): boolean {
+        return this.msalService.instance.getActiveAccount() !== null;
+    }
+
     obtenerItems(): Observable<ItemCarrito[]> {
         const usuarioId = this.obtenerUsuarioId();
 

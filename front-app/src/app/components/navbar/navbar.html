@@ -1,10 +1,9 @@
-
 <nav class="navbar">
 
     <div class="navbar-container">
 
         <a class="logo" routerLink="/">
-            🍔 Hamburguesas Level Up
+            🍔 Level <span>Up</span>
         </a>
 
         <div class="nav-links">
@@ -21,23 +20,24 @@
                 🏆 Más vendidos
             </a>
 
-            <a routerLink="/carrito" routerLinkActive="active">
-                🛒 Carrito
-            </a>
-
             @if (nombreUsuario) {
 
                 <span class="usuario-activo">
                     👤 {{ nombreUsuario }}
                 </span>
 
-                <button class="btn-logout" (click)="cerrarSesion()">
+                <button class="pill btn-logout" (click)="cerrarSesion()">
                     Cerrar sesión
+                </button>
+
+                <button class="pill btn-carrito" (click)="panel.abrir()" aria-label="Abrir carrito">
+                    🛒 ${{ panel.total() | number:'1.0-0' }}
+                    <span class="burbuja">{{ panel.unidades() }}</span>
                 </button>
 
             } @else {
 
-                <a routerLink="/login" routerLinkActive="active">
+                <a class="pill btn-login" routerLink="/login">
                     Iniciar sesión
                 </a>
 
