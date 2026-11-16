@@ -13,7 +13,7 @@
 
         <select id="top" [value]="top()" (change)="cambiarTop($any($event.target).value)">
             @for (opcion of opcionesTop; track opcion) {
-                <option [value]="opcion">{{ opcion }}</option>
+                <option [value]="opcion" [selected]="opcion === top()">{{ opcion }}</option>
             }
         </select>
 
