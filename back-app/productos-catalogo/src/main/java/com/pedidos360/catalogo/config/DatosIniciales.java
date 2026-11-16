@@ -34,7 +34,7 @@ public class DatosIniciales implements CommandLineRunner {
                 new Producto("Hamburguesa BBQ", "Carne de vacuno, queso cheddar, tocino y salsa BBQ.", 7490.0, 8, "Hamburguesas"),
                 new Producto("Hamburguesa Doble", "Doble carne, doble queso, cebolla y salsa especial.", 8990.0, 6, "Hamburguesas"),
                 new Producto("Papas Fritas", "Papas fritas crujientes con sal.", 2990.0, 15, "Acompañamientos"),
-                new Producto("Bebida", "Bebida de 500ml.", 1990.0, 20, "Bebidas"));
+                new Producto("Coca-Cola", "Coca-Cola de 500ml.", 1990.0, 20, "Bebidas"));
         // Uno por uno para respetar el orden de los ids autogenerados
         productos.forEach(productoRepository::save);
         log.info("[CATALOGO] Tabla vacia: se cargaron {} productos iniciales", productos.size());
