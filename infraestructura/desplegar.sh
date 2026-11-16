@@ -15,7 +15,9 @@ docker run --rm -v "$RAIZ/back-app":/app -v maven_repo:/root/.m2 -w /app \
 # La IP publica cambia en cada despliegue: se consulta a AWS para autorizarla en CORS.
 TOKEN="$(curl -s -X PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 60')"
 IP_PUBLICA="$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-ipv4)"
-export CORS_ORIGINS="http://localhost:4200,http://$IP_PUBLICA:4200"
+# FRONT_URL: frontend publicado en Netlify (https), para que el profesor lo abra desde cualquier PC.
+FRONT_URL="${FRONT_URL:-https://pedidos360-sol.netlify.app}"
+export CORS_ORIGINS="http://localhost:4200,http://$IP_PUBLICA:4200,$FRONT_URL"
 
 cd "$RAIZ/infraestructura"
 docker compose up -d --build

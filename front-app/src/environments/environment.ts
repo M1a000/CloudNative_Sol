@@ -5,8 +5,10 @@ export const environment = {
   azureAd: {
     clientId: '69ceeda7-0b2f-441c-9c63-f537ab6db86f',
     tenantId: 'a70c6bf7-a13d-4110-9625-747412057e28',
-    redirectUri: 'http://localhost:4200',
-    postLogoutRedirectUri: 'http://localhost:4200',
+    // Build de produccion = el que se publica en Netlify (https). Esta URL debe estar
+    // registrada como Redirect URI (tipo SPA) en la App Registration de Azure.
+    redirectUri: 'https://pedidos360-sol.netlify.app',
+    postLogoutRedirectUri: 'https://pedidos360-sol.netlify.app',
     apiScopes: ['api://69ceeda7-0b2f-441c-9c63-f537ab6db86f/access_as_user'],
   },
 
